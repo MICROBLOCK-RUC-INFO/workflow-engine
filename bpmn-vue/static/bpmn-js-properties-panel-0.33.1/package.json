@@ -1,0 +1,67 @@
+{
+  "name": "bpmn-js-properties-panel",
+  "version": "0.33.1",
+  "description": "A simple properties panel for bpmn-js",
+  "scripts": {
+    "lint": "eslint .",
+    "all": "run-s lint test build",
+    "dev": "npm test -- --no-single-run --auto-watch",
+    "build": "run-s build:*",
+    "build:less": "lessc --include-path=node_modules styles/properties.less dist/assets/bpmn-js-properties-panel.css",
+    "test": "karma start",
+    "prepublishOnly": "run-s build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bpmn-io/bpmn-js-properties-panel"
+  },
+  "keywords": [
+    "bpmn-js",
+    "properties",
+    "properties-panel"
+  ],
+  "author": {
+    "name": "Nico Rehwaldt",
+    "url": "https://github.com/nikku"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "bpmn-font": "^0.9.0",
+    "bpmn-js": "^5.1.2",
+    "bpmn-moddle": "^5.1.6",
+    "camunda-bpmn-moddle": "^4.3.0",
+    "chai": "^4.1.2",
+    "diagram-js": "^5.1.1",
+    "eslint": "^5.16.0",
+    "eslint-plugin-bpmn-io": "^0.6.0",
+    "karma": "^4.1.0",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-firefox-launcher": "^1.1.0",
+    "karma-mocha": "~1.2.0",
+    "karma-phantomjs-launcher": "^1.0.4",
+    "karma-safari-launcher": "^1.0.0",
+    "karma-sinon-chai": "^2.0.2",
+    "karma-spec-reporter": "0.0.31",
+    "karma-webpack": "^4.0.2",
+    "less": "^3.8.0",
+    "mocha": "^5.2.0",
+    "mocha-test-container-support": "0.2.0",
+    "npm-run-all": "^4.1.5",
+    "puppeteer": "^1.18.0",
+    "raw-loader": "^0.5.1",
+    "sinon": "^4.5.0",
+    "sinon-chai": "^3.2.0",
+    "webpack": "^4.16.2"
+  },
+  "dependencies": {
+    "ids": "^1.0.0",
+    "inherits": "^2.0.1",
+    "lodash": "^4.17.15",
+    "min-dom": "^3.1.1",
+    "scroll-tabs": "^1.0.1",
+    "selection-update": "^0.1.2"
+  },
+  "peerDependencies": {
+    "bpmn-js": "^3.x || ^4.x || ^5.x || ^6.x"
+  }
+}

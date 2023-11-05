@@ -1,0 +1,1 @@
+[peer0.org1.workflow.com:8999,peer0.org2.workflow.com:8999,peer0.org3.workflow.com:8999]

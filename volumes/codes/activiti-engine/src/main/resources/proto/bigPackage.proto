@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package protos;
+option java_package = "org.activiti.engine.impl.db.workflowClass.proto.bigPackage";
+option java_outer_classname="wfPackage";
+
+message wfTransaction {
+    string rwSet=1;
+    string businessData=2;
+    string serviceResultJson=3;
+    string oid=4;
+}
+
+message bigPackage {
+    repeated wfTransaction wfTransaction=1;
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package protos;
+option java_package = "org.activiti.engine.impl.db.workflowClass.proto.rwSet";
+option java_outer_classname="rwSetList";
+
+import "simpleEntity.proto";
+
+message rwSet {
+    readSet readSet=1;
+    writeSet writeSet=2;
+}
+
+message readSet {
+    repeated entity readSet=1;
+}
+
+message writeSet {
+    repeated entity writeSet=1;
+}

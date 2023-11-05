@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package protos;
+option java_package = "org.activiti.engine.impl.db.workflowClass.proto.entity";
+option java_outer_classname="simpleEntity";
+enum entityType {
+    DEPLOYMENT=0;
+    RESOURCE=1;
+    PROCESSDEFINITION=2;
+    TASK=3;
+    EXECUTION=4;
+    EVENT=5;
+    VARIABLE=6;
+}
+enum opType {
+    INSERT=0;
+    UPDATE=1;
+    DELETE=2;
+    READ=3;
+}
+
+message entity {
+    string id=1;
+    int32 revision=2;
+    entityType entityType=3;
+    opType opType=4;
+    //extension是子类的属性
+    bytes extension=5;
+}
+
+message deployment {
+    string name=1;
+    string category=2;
+    string key=3;
+    string tenantId=4;
+    int64 deploymentTime=5;
+    string engineVersion=6;
+}
+
+message resource {
+    string name=1;
+    //bytes想法是读集为空，写集存在
+    string bytes=2;
+    bool generated=3;
+    string deploymentId=4;
+}
+
+message processDefinition {
+    string category=1;
+    string name=2;
+    string key=3;
+    int32 version=4;
+    string deploymentId=5;
+    string resourceName=6;
+    string tenantId=7;
+    string diagramResourceName=8;
+    string description=9;
+    bool hasStartFormKey=10;
+    bool isGraphicalNotationDefined=11;
+    int32 suspensionState=12;
+    string engineVersion=13;
+}
+
+message task {
+    string oid=1;
+    string userId=2;
+    string name=3;
+    string parentTaskId=4;
+    string description=5;
+    int32 priority=6;
+    int64 createTime=7;
+    string owner=8;
+    string assignee=9;
+    string delegationStateString=10;
+    string executionId=11;
+    string processInstanceId=12;
+    string processDefinitionId=13;
+    string taskDefinitionKey=14;
+    int64 dueDate=15;
+    string category=16;
+    int32 suspensionState=17;
+    string tenantId=18;
+    string formKey=19;
+    int64 claimTime=20;
+}
+
+message execution {
+    string oid=1;
+    string processInstanceId=2;
+    string businessKey=3;
+    string processDefinitionId=4;
+    string activityId=5;
+    bool isActive=6;
+    bool isConcurrent=7;
+    bool isScope=8;
+    bool isEventScope=9;
+    bool isMultiInstanceRoot=10;
+    string parentId=11;
+    string superExecutionId=12;
+    string rootProcessInstanceId=13;
+    int32 suspensionState=14;
+    string tenantId=15;
+    string name=16;
+    int64 startTime=17;
+    string startUserId=18;
+    bool isCountEnabled=19;
+    int32 eventSubscriptionCount=20;
+    int32 taskCount=21;
+    int32 jobCount=22;
+    int32 timerJobCount=23;
+    int32 suspendedJobCount=24;
+    int32 deadLetterJobCount=25;
+    int32 variableCount=26;
+    int32 identityLinkCount=27;
+    string parentProcessInstanceId=28;
+}
+
+message event {
+    string eventType=1;
+    string eventName=2;
+    string executionId=3;
+    string processInstanceId=4;
+    string activityId=5;
+    string configuration=6;
+    int64 created=7;
+    string processDefinitionId=8;
+    string tenantId=9;
+    //遗漏了
+    string oid=10;
+}
+
+message variable {
+    //oid好像没有用
+    string oid=1;
+    string type=2;
+    string name=3;
+    string processInstanceId=4;
+    string executionId=5;
+    string taskId=6;
+    int64 longValue=7;
+    double doubleValue=8;
+    string textValue=9;
+    string text2Value=10;
+}
+

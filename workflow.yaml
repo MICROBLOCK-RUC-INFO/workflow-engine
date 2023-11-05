@@ -1,0 +1,355 @@
+version: '3'
+
+networks:
+  workflowNetwork:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+
+#zookeeper,kafka,orderer,ca均只使用一个，因为单机版只是一个样例
+services:
+  zookeeper.workflow.com:
+    container_name: zookeeper.workflow.com
+    image: hyperledger/fabric-zookeeper:x86_64-0.4.6
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 32181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - workflowNetwork
+
+  kafka.workflow.com:
+    container_name: kafka.workflow.com
+    image: hyperledger/fabric-kafka:x86_64-0.4.6
+    depends_on:
+      - zookeeper.workflow.com
+    environment:
+      - KAFKA_BROKER_ID=0
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper.workflow.com:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka.workflow.com:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_MESSAGE_MAX_BYTES=1048576 # 1 * 1024 * 1024 B
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=1048576 # 1 * 1024 * 1024 B
+      - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+      - KAFKA_LOG_RETENTION_MS=-1
+      - KAFKA_MIN_INSYNC_REPLICAS=1
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=1
+    networks:
+      - workflowNetwork
+  orderer.workflow.com:
+    container_name: orderer.workflow.com
+    image: hyperledger/fabric-orderer:1.4.0
+    depends_on:
+      - kafka.workflow.com
+    environment:
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/configtx/genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/crypto/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/crypto/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/crypto/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/crypto/orderer/tls/ca.crt,/var/hyperledger/crypto/peerOrg1/tls/ca.crt, /var/hyperledger/crypto/peerOrg2/tls/ca.crt,/var/hyperledger/crypto/peerOrg3/tls/ca.crt]
+      - ORDERER_KAFKA_RETRY_LONGINTERVAL=10s
+      - ORDERER_KAFKA_RETRY_LONGTOTAL=100s
+      - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+      - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+      - ORDERER_KAFKA_VERBOSE=true
+#      - ORDERER_KAFKA_BROKERS=[10.77.70.173:9092,10.77.70.124:9092,10.77.70.84:9092]
+    networks:
+      - workflowNetwork
+    ports:
+      - 7050:7050
+    command: orderer
+    volumes:
+      - ./sdk-application/artifacts/channel:/var/hyperledger/configtx
+      - ./sdk-application/artifacts/channel/crypto-config/ordererOrganizations/workflow.com/orderers/orderer.workflow.com/:/var/hyperledger/crypto/orderer
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org1.workflow.com/peers/peer0.org1.workflow.com/:/var/hyperledger/crypto/peerOrg1
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org2.workflow.com/peers/peer0.org2.workflow.com/:/var/hyperledger/crypto/peerOrg2
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org3.workflow.com/peers/peer0.org3.workflow.com/:/var/hyperledger/crypto/peerOrg3
+
+  ca.org1.workflow.com:
+    container_name: ca.org1.workflow.com
+    image: workflow-ca:1.0
+    depends_on: 
+      - orderer.workflow.com
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org1
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1.workflow.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/73699cfcd0a2fff2bc70df0c3356f18ae00d4468bb16084f57ef814b9337f1cb_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1.workflow.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/73699cfcd0a2fff2bc70df0c3356f18ae00d4468bb16084f57ef814b9337f1cb_sk
+    networks:
+      - workflowNetwork  
+    ports:
+      - 7054:7054
+    command: sh -c "fabric-ca-server start -b admin:adminpw -d"
+    volumes:
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org1.workflow.com/ca/:/etc/hyperledger/fabric-ca-server-config/
+  
+  ca.org2.workflow.com:
+    container_name: ca.org2.workflow.com
+    image: workflow-ca:1.0
+    depends_on: 
+      - orderer.workflow.com
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org2
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org2.workflow.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/4ef9fc609d67498419b115fecc4803660460ce869fde15ab16030d3458983748_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org2.workflow.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/4ef9fc609d67498419b115fecc4803660460ce869fde15ab16030d3458983748_sk
+    networks:
+      - workflowNetwork  
+    ports:
+      - 8054:7054
+    command: sh -c "fabric-ca-server start -b admin:adminpw -d"
+    volumes:
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org2.workflow.com/ca/:/etc/hyperledger/fabric-ca-server-config/
+
+  ca.org3.workflow.com:
+    container_name: ca.org3.workflow.com
+    image: workflow-ca:1.0
+    depends_on: 
+      - orderer.workflow.com
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org3
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org3.workflow.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/15a70a08cc4e5dff90baa11674c08bc6befa013ed35dc04de366d42130de4908_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org3.workflow.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/15a70a08cc4e5dff90baa11674c08bc6befa013ed35dc04de366d42130de4908_sk
+    networks:
+      - workflowNetwork  
+    ports:
+      - 9054:7054
+    command: sh -c "fabric-ca-server start -b admin:adminpw -d"
+    volumes:
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org3.workflow.com/ca/:/etc/hyperledger/fabric-ca-server-config/
+  
+  peer0.org1.workflow.com:
+    container_name: peer0.org1.workflow.com
+    image: workflow-peer:2.0
+    depends_on: 
+      - orderer.workflow.com
+      - ca.org1.workflow.com
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=artifacts_default
+      - FABRIC_LOGGING_SPEC=DEBUG
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false 
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/crypto/peer/msp
+      - CORE_PEER_MSP_ADMINCERTS=/etc/hyperledger/crypto/admin/msp/signcerts/Admin@org1.workflow.com-cert.pem
+      - CORE_PEER_MSP_KEYSTORE=/etc/hyperledger/crypto/admin/msp/keystore/4d77cfd12a41398d4ed722a7448344ed2a2ea93cc8166a44578b35a2376292cc_sk
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/crypto/peer/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/crypto/peer/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/crypto/peer/tls/ca.crt
+      - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0.org1.workflow.com
+      - CORE_PEER_ID=peer0.org1.workflow.com
+      - CORE_PEER_ADDRESS=peer0.org1.workflow.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.workflow.com:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.workflow.com:7051
+      - ORDERER_TLS_PATH=/etc/hyperledger/crypto/orderer/tls/ca.crt
+      - FABRIC_ORDERER_ADDR=grpcs://orderer.workflow.com:7050
+      - FABRIC_ORDERER_NAME=orderer.workflow.com
+      - FABRIC_USERNAME=Jim
+      - WF_FLUSHTIME=200
+      - WF_CHECKTIME=500
+      - WF_CHECKROUND=20
+      - WF_ACTIVITIPORT=8888
+      - WF_AUTOTEST=false
+      - MONITOR_CONFIG=/etc/hyperledger/crypto/channelConfig/monitorIps.txt
+      - WORKFLOWCHANNEL_PEER_CONFIG=/etc/hyperledger/crypto/channelConfig/channelPeerConfig.txt
+      - WORKFLOWCHANNEL_ORDERER_CONFIG=/etc/hyperledger/crypto/channelConfig/channelOrdererConfig.txt
+      - isEvil=false
+      - cacheCleanTime=3600000
+      - SERVICE_RESULT_PERSISTENCE=false
+      - DB_URL=jdbc:mysql://127.0.0.1:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - NACOS_ADDRESS=peer0.org1.workflow.com
+      - NACOS_PORT=8848
+    networks:
+      workflowNetwork:
+        ipv4_address: 172.28.0.100
+    ports:
+      - 7051:7051
+      - 7053:7053
+      - 8999:8999
+      - 7888:8888
+      - 7848:8848
+    command: sh -c "/usr/local/scripts/cmd.sh"
+    volumes:
+      - ./sdk-application/artifacts/channel/channelConfig:/etc/hyperledger/crypto/channelConfig
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org1.workflow.com/peers/peer0.org1.workflow.com/:/etc/hyperledger/crypto/peer
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org1.workflow.com/users/Admin@org1.workflow.com/:/etc/hyperledger/crypto/admin
+      - ./sdk-application/artifacts/channel/crypto-config/ordererOrganizations/workflow.com/orderers/orderer.workflow.com/:/etc/hyperledger/crypto/orderer
+      - ./volumes/codes/wfService/target/wfService.jar:/usr/local/monitor/wfService.jar
+      - ./volumes/codes/wfEngine/target/wfEngine.jar:/usr/local/wfEngine.jar
+      - ./volumes/scripts:/usr/local/scripts
+      - ./volumes/config/swarm.key:/root/swarm.key
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations:/etc/hyperledger/crypto/allPeers
+      - ./sdk-application/artifacts/channel/crypto-config/ordererOrganizations:/etc/hyperledger/crypto/allOrderers
+      - ./volumes/config/core.yaml:/etc/hyperledger/fabric/core.yaml
+      - ./volumes/lib/peer:/usr/local/bin/peer
+      - ./volumes/codes/nacos/distribution/target/nacos-server-1.2.0-SNAPSHOT/nacos:/nacos
+
+  peer0.org2.workflow.com:
+    container_name: peer0.org2.workflow.com
+    image: workflow-peer:2.0
+    depends_on: 
+      - orderer.workflow.com
+      - ca.org2.workflow.com
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=artifacts_default
+      - FABRIC_LOGGING_SPEC=DEBUG
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false 
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/crypto/peer/msp
+      - CORE_PEER_MSP_ADMINCERTS=/etc/hyperledger/crypto/admin/msp/signcerts/Admin@org2.workflow.com-cert.pem
+      - CORE_PEER_MSP_KEYSTORE=/etc/hyperledger/crypto/admin/msp/keystore/32f7259ee134d980eb9e5b74cb4950c8cfe3a5516f2f4839baa307d386e833c2_sk
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/crypto/peer/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/crypto/peer/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/crypto/peer/tls/ca.crt
+      - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0.org2.workflow.com
+      - CORE_PEER_ID=peer0.org2.workflow.com
+      - CORE_PEER_ADDRESS=peer0.org2.workflow.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.workflow.com:7051
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.workflow.com:7051
+      - ORDERER_TLS_PATH=/etc/hyperledger/crypto/orderer/tls/ca.crt
+      - FABRIC_ORDERER_ADDR=grpcs://orderer.workflow.com:7050
+      - FABRIC_ORDERER_NAME=orderer.workflow.com
+      - FABRIC_USERNAME=Barry
+      - WF_FLUSHTIME=200
+      - WF_CHECKTIME=500
+      - WF_CHECKROUND=20
+      - WF_ACTIVITIPORT=8888
+      - WF_AUTOTEST=false
+      - MONITOR_CONFIG=/etc/hyperledger/crypto/channelConfig/monitorIps.txt
+      - WORKFLOWCHANNEL_PEER_CONFIG=/etc/hyperledger/crypto/channelConfig/channelPeerConfig.txt
+      - WORKFLOWCHANNEL_ORDERER_CONFIG=/etc/hyperledger/crypto/channelConfig/channelOrdererConfig.txt
+      - isEvil=false
+      - cacheCleanTime=3600000
+      - SERVICE_RESULT_PERSISTENCE=false
+      - DB_URL=jdbc:mysql://127.0.0.1:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - NACOS_ADDRESS=peer0.org2.workflow.com
+      - NACOS_PORT=8848
+    networks:
+      workflowNetwork:
+        ipv4_address: 172.28.0.101
+    ports:
+      - 8051:7051
+      - 8053:7053
+      - 9000:8999
+      - 8888:8888
+      - 8848:8848
+    command: sh -c "/usr/local/scripts/cmd.sh"
+    volumes:
+      - ./sdk-application/artifacts/channel/channelConfig:/etc/hyperledger/crypto/channelConfig
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org2.workflow.com/peers/peer0.org2.workflow.com/:/etc/hyperledger/crypto/peer
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org2.workflow.com/users/Admin@org2.workflow.com/:/etc/hyperledger/crypto/admin
+      - ./sdk-application/artifacts/channel/crypto-config/ordererOrganizations/workflow.com/orderers/orderer.workflow.com/:/etc/hyperledger/crypto/orderer
+      - ./volumes/codes/wfService/target/wfService.jar:/usr/local/monitor/wfService.jar
+      - ./volumes/codes/wfEngine/target/wfEngine.jar:/usr/local/wfEngine.jar
+      - ./volumes/scripts:/usr/local/scripts
+      - ./volumes/config/swarm.key:/root/swarm.key
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations:/etc/hyperledger/crypto/allPeers
+      - ./sdk-application/artifacts/channel/crypto-config/ordererOrganizations:/etc/hyperledger/crypto/allOrderers
+      - ./volumes/config/core.yaml:/etc/hyperledger/fabric/core.yaml
+      - ./volumes/lib/peer:/usr/local/bin/peer
+      - ./volumes/codes/nacos/distribution/target/nacos-server-1.2.0-SNAPSHOT/nacos:/nacos
+
+  peer0.org3.workflow.com:
+    container_name: peer0.org3.workflow.com
+    image: workflow-peer:2.0
+    depends_on: 
+      - orderer.workflow.com
+      - ca.org3.workflow.com
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=artifacts_default
+      - FABRIC_LOGGING_SPEC=DEBUG
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false 
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/crypto/peer/msp
+      - CORE_PEER_MSP_ADMINCERTS=/etc/hyperledger/crypto/admin/msp/signcerts/Admin@org3.workflow.com-cert.pem
+      - CORE_PEER_MSP_KEYSTORE=/etc/hyperledger/crypto/admin/msp/keystore/b3b5dbdda2845a4d4e348f121a9283dcfec5de5f222465f2be545eb388f35c9f_sk
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/crypto/peer/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/crypto/peer/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/crypto/peer/tls/ca.crt
+      - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0.org3.workflow.com
+      - CORE_PEER_ID=peer0.org3.workflow.com
+      - CORE_PEER_ADDRESS=peer0.org3.workflow.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org3.workflow.com:7051
+      - CORE_PEER_LOCALMSPID=Org3MSP
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org3.workflow.com:7051
+      - ORDERER_TLS_PATH=/etc/hyperledger/crypto/orderer/tls/ca.crt
+      - FABRIC_ORDERER_ADDR=grpcs://orderer.workflow.com:7050
+      - FABRIC_ORDERER_NAME=orderer.workflow.com
+      - FABRIC_USERNAME=Sun
+      - WF_FLUSHTIME=200
+      - WF_CHECKTIME=500
+      - WF_CHECKROUND=20
+      - WF_ACTIVITIPORT=8888
+      - WF_AUTOTEST=false
+      - MONITOR_CONFIG=/etc/hyperledger/crypto/channelConfig/monitorIps.txt
+      - WORKFLOWCHANNEL_PEER_CONFIG=/etc/hyperledger/crypto/channelConfig/channelPeerConfig.txt
+      - WORKFLOWCHANNEL_ORDERER_CONFIG=/etc/hyperledger/crypto/channelConfig/channelOrdererConfig.txt
+      - isEvil=false
+      - cacheCleanTime=3600000
+      - SERVICE_RESULT_PERSISTENCE=false
+      - DB_URL=jdbc:mysql://127.0.0.1:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - NACOS_ADDRESS=peer0.org3.workflow.com
+      - NACOS_PORT=8848
+    networks:
+      workflowNetwork:
+        ipv4_address: 172.28.0.102
+    ports:
+      - 9051:7051
+      - 9053:7053
+      - 9001:8999
+      - 9888:8888
+      - 9848:8848
+    command: sh -c "/usr/local/scripts/cmd.sh"
+    volumes:
+      - ./sdk-application/artifacts/channel/channelConfig:/etc/hyperledger/crypto/channelConfig
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org3.workflow.com/peers/peer0.org3.workflow.com/:/etc/hyperledger/crypto/peer
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations/org3.workflow.com/users/Admin@org3.workflow.com/:/etc/hyperledger/crypto/admin
+      - ./sdk-application/artifacts/channel/crypto-config/ordererOrganizations/workflow.com/orderers/orderer.workflow.com/:/etc/hyperledger/crypto/orderer
+      - ./volumes/codes/wfService/target/wfService.jar:/usr/local/monitor/wfService.jar
+      - ./volumes/codes/wfEngine/target/wfEngine.jar:/usr/local/wfEngine.jar
+      - ./volumes/scripts:/usr/local/scripts
+      - ./volumes/config/swarm.key:/root/swarm.key
+      - ./sdk-application/artifacts/channel/crypto-config/peerOrganizations:/etc/hyperledger/crypto/allPeers
+      - ./sdk-application/artifacts/channel/crypto-config/ordererOrganizations:/etc/hyperledger/crypto/allOrderers
+      - ./volumes/config/core.yaml:/etc/hyperledger/fabric/core.yaml
+      - ./volumes/lib/peer:/usr/local/bin/peer
+      - ./volumes/codes/nacos/distribution/target/nacos-server-1.2.0-SNAPSHOT/nacos:/nacos

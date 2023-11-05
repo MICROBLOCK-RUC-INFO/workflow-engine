@@ -1,0 +1,3 @@
+[peer0.org1.workflow.com,peer0.org2.workflow.com,peer0.org3.workflow.com]
+[grpcs://peer0.org1.workflow.com:7051,grpcs://peer0.org2.workflow.com:7051,grpcs://peer0.org3.workflow.com:7051]
+[/etc/hyperledger/crypto/allPeers/org1.workflow.com/peers/peer0.org1.workflow.com/tls/ca.crt,/etc/hyperledger/crypto/allPeers/org2.workflow.com/peers/peer0.org2.workflow.com/tls/ca.crt,/etc/hyperledger/crypto/allPeers/org3.workflow.com/peers/peer0.org3.workflow.com/tls/ca.crt]

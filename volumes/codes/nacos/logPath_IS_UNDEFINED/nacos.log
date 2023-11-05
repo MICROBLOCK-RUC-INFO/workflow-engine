@@ -1,0 +1,10 @@
+2020-03-05 16:32:46,487 INFO Expired JWT token.
+
+2020-03-05 16:32:46,489 ERROR Responding with unauthorized error. Message - Full authentication is required to access this resource
+
+2020-03-05 16:32:47,992 ERROR Responding with unauthorized error. Message - Full authentication is required to access this resource
+
+2020-03-05 16:34:52,366 INFO Shutting down ExecutorService 'taskScheduler'
+
+2020-03-05 16:34:52,379 INFO Shutting down ExecutorService 'applicationTaskExecutor'
+
