@@ -83,10 +83,16 @@ export default {
     async init () {
       var that = this
       $('#login-submit').bind('click', function () {
-        that.$router.push('/main1')
+        //that.$router.push('/main1')
         var username = $('#username').val()
         var pwd = $('#password').val()
-        var form = new FormData()
+        if (username === "admin" && pwd === "admin"){
+          that.$router.push('/main1')
+        } else {
+          alert("username or password incorrect!")
+        }
+
+        /*var form = new FormData()
         form.append('username', username)
         form.append('pwd', pwd)
         that.axios({
@@ -102,10 +108,10 @@ export default {
           }
         }).catch(function (error) {
           console.log(error)
-        })
+        })*/
       })
       $('#login-register').bind('click', function () {
-        that.$router.push('/register')
+        that.$router.push('/main1')
       })
     }
   }
