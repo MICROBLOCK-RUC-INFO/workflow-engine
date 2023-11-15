@@ -229,6 +229,14 @@ public  class useRedis {
         setMap.clear();
     }
 
+    public static void insertToRedis(Map<Class<? extends Entity>, Map<String, Entity>> insertedObjects,boolean isDeploy) {
+
+    }
+
+    public static void updateToRedis(List<Entity> updatedObjects,boolean isDeploy) {
+        
+    }
+
     //必须先与update
     public static void insertToRedis(Map<Class<? extends Entity>, Map<String, Entity>> insertedObjects) {
         if (insertedObjects.isEmpty()) {

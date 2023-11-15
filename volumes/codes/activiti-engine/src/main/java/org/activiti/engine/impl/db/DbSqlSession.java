@@ -755,6 +755,7 @@ public class DbSqlSession implements Session {
         }
         if (commandContext.isDeploy()) {
             //deploy就同时直接写数据库了
+            //忘记改了
             flushInserts();
             flushUpdates();
             flushDeletes();
@@ -1166,6 +1167,7 @@ public class DbSqlSession implements Session {
 
     public void close() {
         sqlSession.close();
+        //防止脏数据
         useRedis.threadCacheRemove();
     }
 
