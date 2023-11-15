@@ -7,8 +7,6 @@ import java.util.concurrent.Future;
 
 import com.alibaba.fastjson.JSON;
 import com.google.protobuf.ByteString;
-import com.wq.wfEngine.entity.NetWorkRes;
-import com.wq.wfEngine.entity.WfTask;
 
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.HttpHost;

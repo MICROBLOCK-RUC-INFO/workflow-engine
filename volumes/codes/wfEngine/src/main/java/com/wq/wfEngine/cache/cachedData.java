@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import com.alibaba.fastjson.JSON;
 import com.wq.wfEngine.activiti.workflowFunction;
-import com.wq.wfEngine.pojo.flowNode;
 import com.wq.wfEngine.tool.jsonTransfer;
 
 public class cachedData {
