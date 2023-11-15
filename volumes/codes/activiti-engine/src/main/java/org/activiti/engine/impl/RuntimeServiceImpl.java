@@ -100,6 +100,7 @@ public class RuntimeServiceImpl extends ServiceImpl implements RuntimeService {
 
   /**
    * @apiNote 自己加的接口大部分没有使用activiti的命令模式
+   * 还是需要命令模式
    */
   public Void flushCache(String[] keys) {
       cachedFlushObjects.flushCachedObjectsToRedis(keys);
