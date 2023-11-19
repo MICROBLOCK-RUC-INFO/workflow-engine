@@ -89,6 +89,7 @@ public class cachedData {
     }
 
     public static Map<String,Object> getCurrentTaskByOid(String oid) {
+        if (!currentTaskNameId.containsKey(oid)) return new HashMap<>();
         Map<String,String> status=currentTaskNameId.get(oid);
         Map<String,Object> currentTasks=new HashMap<String,Object>(){{put("oid",oid);}};
         List<String> taskList=List.copyOf(status.keySet());

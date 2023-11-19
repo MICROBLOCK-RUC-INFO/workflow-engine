@@ -152,7 +152,7 @@ public class MonitorController implements DataController {
 
     @RequestMapping(value="testFlush",method = RequestMethod.POST)
     public String testFlush(@RequestBody String req) throws IOException {
-        Collection<String> ips= workflowFabric.getPeersIp("workflowchannel");
+        List<String> ips= workflowFabric.getPeersIp("workflowchannel");
         List<Call> calls=new LinkedList<>();
         for (String ip:ips) {
             calls.add(HttpClientUtil.callHttpRequest("http://"+ip+":8888"+"/wfEngine/flush", req));

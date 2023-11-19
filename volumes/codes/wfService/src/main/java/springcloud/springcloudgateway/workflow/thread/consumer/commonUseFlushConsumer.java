@@ -28,7 +28,7 @@ public class commonUseFlushConsumer implements Consumer<TransactionEvent>{
 
     private final Logger logger=LoggerFactory.getLogger(commonUseFlushConsumer.class);
 
-    public commonUseFlushConsumer(Collection<String> peersIp,List<List<String>> args) {
+    public commonUseFlushConsumer(List<String> peersIp,List<List<String>> args) {
         this.args=args;
         this.flushUrls=peersIp.stream().map(new Function<String,String>() {
                             @Override

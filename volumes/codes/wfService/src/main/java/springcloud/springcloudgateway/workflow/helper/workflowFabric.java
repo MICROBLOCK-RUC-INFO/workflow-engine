@@ -213,7 +213,7 @@ public class workflowFabric {
         return null;
     }
 
-    public Collection<String> getPeersIp(String channelName) {
+    public List<String> getPeersIp(String channelName) {
         try {
             if (workflowchannel==null) {
                 if (client==null) {
@@ -223,7 +223,7 @@ public class workflowFabric {
             }
 
             Collection<Peer> peers=workflowchannel.getPeers();
-            Collection<String> peersUrl=new HashSet<>();
+            List<String> peersUrl=new ArrayList<>();
             for (Peer peer:peers) {
                 String peerUrl=peer.getUrl();
                 peersUrl.add(peerUrl.split(":")[1].substring(2));

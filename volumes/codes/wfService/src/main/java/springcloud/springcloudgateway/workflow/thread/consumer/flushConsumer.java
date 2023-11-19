@@ -24,12 +24,12 @@ public class flushConsumer implements Consumer<TransactionEvent>{
 
     private Map<String,workflowResponse> preDatas;
     private String oids;
-    private Collection<String> peersIp;
+    private List<String> peersIp;
     private boolean isTest;
 
     private final Logger logger=LoggerFactory.getLogger(flushConsumer.class);
 
-    public flushConsumer(Collection<String> peersIp,Map<String, workflowResponse> preDatas,String oids,boolean isTest) {
+    public flushConsumer(List<String> peersIp,Map<String, workflowResponse> preDatas,String oids,boolean isTest) {
         this.peersIp=peersIp;
         this.preDatas=preDatas;
         this.oids=oids;

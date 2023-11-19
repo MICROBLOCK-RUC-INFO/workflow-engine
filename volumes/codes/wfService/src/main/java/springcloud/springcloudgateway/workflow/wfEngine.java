@@ -231,7 +231,7 @@ public class wfEngine {
     }
 
     private List<SimpleHttpResponse> flushbroadCast(String body) throws IOException, InterruptedException, ExecutionException {
-        Collection<String> allPeerIps=workflowFabric.getPeersIp(channelName);
+        List<String> allPeerIps=workflowFabric.getPeersIp(channelName);
         String port=wfConfig.getWorkflowPort();
         if (allPeerIps==null) {
             logger.error("get all peers ip failure");
@@ -252,7 +252,7 @@ public class wfEngine {
     //just for use
     public String deleteDeploymentByName(String request) throws InterruptedException, ExecutionException {
         Map<String,Object> responseMap=new HashMap<>();
-        Collection<String> allPeerIps=workflowFabric.getPeersIp(channelName);
+        List<String> allPeerIps=workflowFabric.getPeersIp(channelName);
         String port=wfConfig.getWorkflowPort();
         if (allPeerIps==null) {
             responseMap.put("code",500);
@@ -289,7 +289,7 @@ public class wfEngine {
     
     //广播所有节点，并回收所有模拟执行返回结果 bodyMap需要传输的数据，method方法
     private Pair<workflowResponse, Pair<String,List<SimpleHttpResponse>>> broadCast(Map<String,Object> bodyMap,String fcn,String Oid) throws IOException, InterruptedException, ExecutionException {
-        Collection<String> allPeerIps=workflowFabric.getPeersIp(channelName);
+        List<String> allPeerIps=workflowFabric.getPeersIp(channelName);
         String port=wfConfig.getWorkflowPort();
         String localIp=wfConfig.getPeerName();
         workflowResponse localWorkflowResponse=null;
@@ -649,8 +649,8 @@ public class wfEngine {
         try {
             int length=futures.size(),count=0;
             String temp="";
-            for (Future<SimpleHttpResponse> future:futures) {
-                SimpleHttpResponse response=future.get();
+            for (int i=0;i<length;i++) {
+                SimpleHttpResponse response=futures.get(i).get();
                 //System.out.println(response.getBodyText());
                 if (count==0) {
                     if (response.getCode()==200) {
@@ -661,6 +661,8 @@ public class wfEngine {
                     if (response.getCode()==200&&temp.equals(response.getBodyText())) {
                         count++;
                     } else {
+                        if (response.getCode()!=200) throw new RuntimeException(String.format("存在节点执行http请求未正常返回, code:%d, body:%s, peer:%s",
+                                                                                response.getCode(),response.getBodyText(),workflowFabric.getPeersIp(channelName).get(i)));
                         count-=1;
                     }
                 }
