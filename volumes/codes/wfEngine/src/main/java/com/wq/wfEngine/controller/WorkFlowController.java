@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -184,6 +185,12 @@ public class WorkFlowController {
     @ResponseBody String queryDeployment() {
         List<Deployment> deployments=workflowFunction.getAllDeployments();
         List<String> filteredDeploymentName=deployments.stream().map(deployment -> deployment.getName()).collect(Collectors.toList());
+        filteredDeploymentName.sort(new Comparator<String>() {
+            @Override
+            public int compare(String arg0, String arg1) {
+                return arg0.compareTo(arg1);
+            }     
+        });
         return jsonTransfer.toJsonString(filteredDeploymentName);
     }
 

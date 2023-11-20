@@ -9,8 +9,9 @@ import org.activiti.engine.delegate.JavaDelegate;
 import org.activiti.engine.impl.context.Context;
 import org.activiti.engine.impl.interceptor.CommandContext;
 
+import com.wq.wfEngine.WfEngineApplication;
 import com.wq.wfEngine.tool.jsonTransfer;
-import com.wq.wfEngine.tool.serviceComposition.inputSelectParser;
+import com.wq.wfEngine.tool.serviceComposition.inputSelector.simpleInputSelector;
 
 public class testError implements JavaDelegate{
     private Expression input;
@@ -19,7 +20,8 @@ public class testError implements JavaDelegate{
     public void execute(DelegateExecution execution) {
         CommandContext commandContext=Context.getCommandContext();
         Map<String,Object> dataPool=commandContext.getCachedOutput();
-        String body=inputSelectParser.parse(dataPool, input.getValue(execution).toString());
+        simpleInputSelector simpleInputSelector=WfEngineApplication.context.getBeanFactory().getBean(simpleInputSelector.class);
+        String body=simpleInputSelector.select(dataPool, input.getValue(execution).toString());
         Map<String,Object> bodyMap=jsonTransfer.jsonToMap(body);
         String userId=String.valueOf(bodyMap.get("userId"));
         String cardId=String.valueOf(bodyMap.get("cardId"));
@@ -28,7 +30,7 @@ public class testError implements JavaDelegate{
         } else {
             if (output!=null) {
                 //如果有指定输出
-                String outputString=inputSelectParser.parse(dataPool, output.getValue(execution).toString());
+                String outputString=simpleInputSelector.select(dataPool, output.getValue(execution).toString());
                 commandContext.setLastResponse(outputString);
             }
         }

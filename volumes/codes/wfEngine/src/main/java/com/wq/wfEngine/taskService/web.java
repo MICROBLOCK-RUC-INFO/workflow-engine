@@ -6,15 +6,14 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Future;
 
-
-
+import com.wq.wfEngine.WfEngineApplication;
 import com.wq.wfEngine.activiti.ActivitiUtils;
 import com.wq.wfEngine.cache.cachedData;
 import com.wq.wfEngine.cache.cachedServiceTaskResult;
 import com.wq.wfEngine.cache.monitorIps;
 import com.wq.wfEngine.tool.Connect;
 import com.wq.wfEngine.tool.jsonTransfer;
-import com.wq.wfEngine.tool.serviceComposition.inputSelectParser;
+import com.wq.wfEngine.tool.serviceComposition.inputSelector.simpleInputSelector;
 import com.wq.wfEngine.tool.serviceComposition.simpleJson.simpleJsonParser;
 
 import org.activiti.engine.RuntimeService;
@@ -56,7 +55,7 @@ public class web implements JavaDelegate {
     private final Logger logger=LoggerFactory.getLogger(web.class); 
 
     public void execute(DelegateExecution execution) {
-        
+        simpleInputSelector simpleInputSelector=WfEngineApplication.context.getBeanFactory().getBean(simpleInputSelector.class);
         try {
             //拿变量
             CommandContext commandContext= Context.getCommandContext();
@@ -102,7 +101,7 @@ public class web implements JavaDelegate {
                                 body=lastResponse;
                             }
                         } else {
-                            body=inputSelectParser.parse(dataPool, input.getValue(execution).toString());
+                            body=simpleInputSelector.select(dataPool, input.getValue(execution).toString());
                         }
                         //智慧城市需要，对输入做一些处理
                         if (modify!=null) {
@@ -134,7 +133,7 @@ public class web implements JavaDelegate {
                                 body=lastResponse;
                             }
                         } else {
-                            body=inputSelectParser.parse(dataPool, String.valueOf(serviceInfoMap.get("input")));
+                            body=simpleInputSelector.select(dataPool, String.valueOf(serviceInfoMap.get("input")));
                         }
                         //智慧城市需要，对输入做一些处理
                         if (serviceInfoMap.containsKey("modify")) {
@@ -226,12 +225,12 @@ public class web implements JavaDelegate {
                     //对齐output
                     if (output!=null) {
                         //如果有指定输出
-                        String outputString=inputSelectParser.parse(dataPool, output.getValue(execution).toString());
+                        String outputString=simpleInputSelector.select(dataPool, output.getValue(execution).toString());
                         commandContext.setLastResponse(outputString);
                     }
                     //流程变量设置
                     if (processVariable!=null) {
-                        Map<String,Object> variables=jsonTransfer.jsonToMap(inputSelectParser.parse(dataPool, processVariable.getValue(execution).toString()));
+                        Map<String,Object> variables=jsonTransfer.jsonToMap(simpleInputSelector.select(dataPool, processVariable.getValue(execution).toString()));
                         execution.setVariables(variables);
                     }
                 } else {

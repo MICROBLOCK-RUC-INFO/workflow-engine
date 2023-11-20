@@ -1,4 +1,4 @@
-package com.wq.wfEngine.tool.serviceComposition;
+package com.wq.wfEngine.tool.serviceComposition.inputSelector;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,9 +18,9 @@ import com.wq.wfEngine.tool.serviceComposition.simpleJson.simpleJsonParser;
  * 但是如果还有更多需求的话，可能需要考虑替换为https://github.com/json-path/JsonPath.git
  * 这个开源项目，JSONPATH可以通过固定的语法，拿到JSONObject的数据
  */
-public class inputSelectParser {
-    private static final Logger logger=LoggerFactory.getLogger(inputSelectParser.class);
-    public static String getValue(Map<String,Object> root,String valueString) {
+public class simpleInputSelector implements inputSelectorInterface<Map<String,Object>,String>{
+    private final Logger logger=LoggerFactory.getLogger(simpleInputSelector.class);
+    public String getValue(Map<String,Object> root,String valueString) {
         int index=-1;
         Object res=null;
         String[] paths=valueString.split("\\.");
@@ -75,7 +75,7 @@ public class inputSelectParser {
     }
 
     @SuppressWarnings("unchecked")
-    public static String parse(Map<String,Object> root,String sentence) {
+    public String select(Map<String,Object> root,String sentence) {
         System.out.println(String.format("inputSelect root %s,sentence %s", jsonTransfer.toJsonString(root),sentence));
         //logger.info("inputSelect root {},sentence {}",root,sentence);
         Map<String,Object> mapping=(Map<String,Object>)simpleJsonParser.parse(sentence);
