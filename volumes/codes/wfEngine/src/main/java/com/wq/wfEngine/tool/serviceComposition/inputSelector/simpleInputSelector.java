@@ -9,6 +9,7 @@ import java.util.Queue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.annotation.ObjectIdGenerators.StringIdGenerator;
 import com.wq.wfEngine.tool.jsonTransfer;
@@ -18,6 +19,7 @@ import com.wq.wfEngine.tool.serviceComposition.simpleJson.simpleJsonParser;
  * 但是如果还有更多需求的话，可能需要考虑替换为https://github.com/json-path/JsonPath.git
  * 这个开源项目，JSONPATH可以通过固定的语法，拿到JSONObject的数据
  */
+@Component
 public class simpleInputSelector implements inputSelectorInterface<Map<String,Object>,String>{
     private final Logger logger=LoggerFactory.getLogger(simpleInputSelector.class);
     public String getValue(Map<String,Object> root,String valueString) {
@@ -131,6 +133,9 @@ public class simpleInputSelector implements inputSelectorInterface<Map<String,Ob
                 List<Object> resList=(List<Object>)result.get(name);
                 result.put(name,resList.get(index));
             }
+        }
+        if (result.containsKey("jsonlist")) {
+            System.out.println(result.get("jsonlist") instanceof List);
         }
         return jsonTransfer.toJsonString(result);
     }

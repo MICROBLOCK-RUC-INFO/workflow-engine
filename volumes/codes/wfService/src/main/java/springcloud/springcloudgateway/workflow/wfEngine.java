@@ -649,8 +649,10 @@ public class wfEngine {
         try {
             int length=futures.size(),count=0;
             String temp="";
+            List<String> list=new ArrayList<>();
             for (int i=0;i<length;i++) {
                 SimpleHttpResponse response=futures.get(i).get();
+                list.add(response.getBodyText());
                 //System.out.println(response.getBodyText());
                 if (count==0) {
                     if (response.getCode()==200) {
@@ -668,7 +670,7 @@ public class wfEngine {
                 }
             }
             if (count<=length/3) {
-                throw new RuntimeException("相同的结果少于等于2/3");
+                throw new RuntimeException("相同的结果少于等于2/3,"+list.toString());
             } else {
                 Pair<Boolean,String> pair=Pair.of(true, temp);
                 return pair;
