@@ -15,6 +15,9 @@ import com.wq.wfEngine.tool.jsonTransfer;
 @Component
 public class jsonPathInputSelector implements inputSelectorInterface<String,String>{
     
+    public String select(Map<String,Object> dataRoot,String sentence) {
+        return select(jsonTransfer.toJsonString(dataRoot), sentence);
+    }
 
     //这个可以用来替换simpleJsonParser与inputSelectParser,使用的开源的JsonPath
     public String select(String dataRootJson,String sentence) {

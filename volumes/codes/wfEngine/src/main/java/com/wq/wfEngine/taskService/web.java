@@ -13,6 +13,7 @@ import com.wq.wfEngine.cache.cachedServiceTaskResult;
 import com.wq.wfEngine.cache.monitorIps;
 import com.wq.wfEngine.tool.Connect;
 import com.wq.wfEngine.tool.jsonTransfer;
+import com.wq.wfEngine.tool.serviceComposition.inputSelector.jsonPathInputSelector;
 import com.wq.wfEngine.tool.serviceComposition.inputSelector.simpleInputSelector;
 import com.wq.wfEngine.tool.serviceComposition.simpleJson.simpleJsonParser;
 
@@ -55,7 +56,7 @@ public class web implements JavaDelegate {
     private final Logger logger=LoggerFactory.getLogger(web.class); 
 
     public void execute(DelegateExecution execution) {
-        simpleInputSelector simpleInputSelector=WfEngineApplication.context.getBeanFactory().getBean(simpleInputSelector.class);
+        jsonPathInputSelector jsonPathInputSelector=WfEngineApplication.context.getBeanFactory().getBean(jsonPathInputSelector.class);
         try {
             //拿变量
             CommandContext commandContext= Context.getCommandContext();
@@ -101,7 +102,7 @@ public class web implements JavaDelegate {
                                 body=lastResponse;
                             }
                         } else {
-                            body=simpleInputSelector.select(dataPool, input.getValue(execution).toString());
+                            body=jsonPathInputSelector.select(dataPool, input.getValue(execution).toString());
                         }
                         //智慧城市需要，对输入做一些处理
                         if (modify!=null) {
@@ -133,7 +134,7 @@ public class web implements JavaDelegate {
                                 body=lastResponse;
                             }
                         } else {
-                            body=simpleInputSelector.select(dataPool, String.valueOf(serviceInfoMap.get("input")));
+                            body=jsonPathInputSelector.select(dataPool, String.valueOf(serviceInfoMap.get("input")));
                         }
                         //智慧城市需要，对输入做一些处理
                         if (serviceInfoMap.containsKey("modify")) {
@@ -219,18 +220,18 @@ public class web implements JavaDelegate {
                         cachedServiceTaskResult.getServiceTaskRes(oid).put(serviceTaskName,result);
                     }
                     commandContext.setLastResponse((response.getBodyText()));
-                    commandContext.storeOutput(execution.getCurrentFlowElement().getName(), simpleJsonParser.parse(response.getBodyText()));
+                    commandContext.storeOutput(execution.getCurrentFlowElement().getName(), jsonTransfer.toJsonString(response.getBodyText()));
 
 
                     //对齐output
                     if (output!=null) {
                         //如果有指定输出
-                        String outputString=simpleInputSelector.select(dataPool, output.getValue(execution).toString());
+                        String outputString=jsonPathInputSelector.select(dataPool, output.getValue(execution).toString());
                         commandContext.setLastResponse(outputString);
                     }
                     //流程变量设置
                     if (processVariable!=null) {
-                        Map<String,Object> variables=jsonTransfer.jsonToMap(simpleInputSelector.select(dataPool, processVariable.getValue(execution).toString()));
+                        Map<String,Object> variables=jsonTransfer.jsonToMap(jsonPathInputSelector.select(dataPool, processVariable.getValue(execution).toString()));
                         execution.setVariables(variables);
                     }
                 } else {
