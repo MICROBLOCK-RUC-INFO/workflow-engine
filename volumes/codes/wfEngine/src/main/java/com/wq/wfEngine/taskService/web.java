@@ -220,7 +220,7 @@ public class web implements JavaDelegate {
                         cachedServiceTaskResult.getServiceTaskRes(oid).put(serviceTaskName,result);
                     }
                     commandContext.setLastResponse((response.getBodyText()));
-                    commandContext.storeOutput(execution.getCurrentFlowElement().getName(), jsonTransfer.toJsonString(response.getBodyText()));
+                    commandContext.storeOutput(execution.getCurrentFlowElement().getName(), jsonTransfer.jsonToMap(response.getBodyText()));
 
 
                     //对齐output
