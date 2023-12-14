@@ -154,7 +154,7 @@ organizations:
 #
 orderers:
   orderer.workflow.com:
-    url: grpcs://localhost:7050
+    url: grpcs://10.77.110.222:7050
 
     # these are standard properties defined by the gRPC library
     # they will be passed in as-is to gRPC client constructor
@@ -170,8 +170,8 @@ orderers:
 peers:
   peer0.org1.workflow.com:
     # this URL is used to send endorsement and query requests
-    url: grpcs://localhost:7051
-    eventUrl: grpcs://localhost:7053
+    url: grpcs://10.77.110.222:7051
+    eventUrl: grpcs://10.77.110.222:7053
     grpcOptions:
       ssl-target-name-override: peer0.org1.workflow.com
     tlsCACerts:
@@ -179,8 +179,8 @@ peers:
 
 
   peer0.org2.workflow.com:
-    url: grpcs://localhost:8051
-    eventUrl: grpcs://localhost:8053
+    url: grpcs://10.77.110.222:8051
+    eventUrl: grpcs://10.77.110.222:8053
     grpcOptions:
       ssl-target-name-override: peer0.org2.workflow.com
     tlsCACerts:
@@ -188,8 +188,8 @@ peers:
 
 
   peer0.org3.workflow.com:
-    url: grpcs://localhost:9051
-    eventUrl: grpcs://localhost:9053
+    url: grpcs://10.77.110.222:9051
+    eventUrl: grpcs://10.77.110.222:9053
     grpcOptions:
       ssl-target-name-override: peer0.org3.workflow.com
     tlsCACerts:
@@ -203,7 +203,7 @@ peers:
 #
 certificateAuthorities:
   ca-org1:
-    url: https://localhost:7054
+    url: https://10.77.110.222:7054
     # the properties specified under this object are passed to the 'http' client verbatim when
     # making the request to the Fabric-CA server
     httpOptions:
@@ -220,7 +220,7 @@ certificateAuthorities:
     caName: ca-org1
 
   ca-org2:
-    url: https://localhost:8054
+    url: https://10.77.110.222:8054
     httpOptions:
       verify: false
     tlsCACerts:
@@ -232,7 +232,7 @@ certificateAuthorities:
     caName: ca-org2
 
   ca-org3:
-    url: https://localhost:9054
+    url: https://10.77.110.222:9054
     httpOptions:
       verify: false
     tlsCACerts:

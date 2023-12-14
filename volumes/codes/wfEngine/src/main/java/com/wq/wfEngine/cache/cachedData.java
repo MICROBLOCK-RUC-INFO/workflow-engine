@@ -88,6 +88,14 @@ public class cachedData {
         return false;
     }
 
+    /**
+     * 代实现
+     * @param oid
+     */
+    public static void removeInstanceCacheByOid(String oid) {
+        
+    }
+
     public static Map<String,Object> getCurrentTaskByOid(String oid) {
         if (!currentTaskNameId.containsKey(oid)) return new HashMap<>();
         Map<String,String> status=currentTaskNameId.get(oid);
