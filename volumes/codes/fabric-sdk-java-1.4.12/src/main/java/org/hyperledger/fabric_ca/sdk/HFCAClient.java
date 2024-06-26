@@ -85,6 +85,7 @@ import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.entity.StringEntity;
@@ -1626,7 +1627,7 @@ public class HFCAClient {
                     msf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
                     sf = msf;
                 } else {
-                    sf = new SSLConnectionSocketFactory(sslContext);
+                    sf = new SSLConnectionSocketFactory(sslContext,NoopHostnameVerifier.INSTANCE);
                 }
 
                 registry = RegistryBuilder.<ConnectionSocketFactory>create()

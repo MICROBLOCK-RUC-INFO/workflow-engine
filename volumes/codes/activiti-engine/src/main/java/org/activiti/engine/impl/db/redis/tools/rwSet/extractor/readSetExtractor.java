@@ -28,7 +28,4 @@ public class readSetExtractor extends extractor{
         }
         return jsonTransfer.rwSetToJsonString(readSet);
     }
-
-
-
 }

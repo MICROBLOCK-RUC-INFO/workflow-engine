@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 /*
  * 用来缓存oid对应的messageEvent的name与execution
  * 方便通过oid来查找
+ * 需要注释：：：：：：
  */
 public class oidEvents {
     private static Logger logger=LoggerFactory.getLogger(oidEvents.class);

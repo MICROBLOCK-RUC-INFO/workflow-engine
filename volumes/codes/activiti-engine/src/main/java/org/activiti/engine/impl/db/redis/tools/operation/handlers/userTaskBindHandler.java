@@ -1,23 +1,19 @@
 package org.activiti.engine.impl.db.redis.tools.operation.handlers;
 
+import java.util.List;
 import java.util.Map;
 
 import org.activiti.engine.impl.db.redis.entityFieldMap;
 import org.activiti.engine.impl.db.redis.useRedis;
+import org.activiti.engine.impl.db.redis.tools.operation.operations.operationSelector;
 import org.activiti.engine.impl.db.redis.tools.operation.taskBind.binderImpl;
 import org.activiti.engine.impl.db.redis.tools.operation.taskBind.tableOperator;
+import org.activiti.engine.impl.db.redis.tools.operation.verify.verifyOperator;
 import org.activiti.engine.impl.persistence.entity.TaskEntity;
 import org.activiti.engine.impl.persistence.entity.TaskEntityImpl;
 
 public class userTaskBindHandler extends binderImpl implements handler{
 
-    /**
-     * @apiNote 这个函数预留给校验用的
-     * @return 
-     */
-    public boolean verify() {
-        return false;
-    }
     /**
      * @param oid 表示唯一的工作流实例
      * @param taskName 任务名

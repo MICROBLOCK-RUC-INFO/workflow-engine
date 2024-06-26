@@ -3,9 +3,12 @@ package org.activiti.engine.impl.db.redis.tools.operation.operations;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.activiti.engine.impl.db.redis.tools.operation.handlers.deployHandler;
 import org.activiti.engine.impl.db.redis.tools.operation.handlers.handler;
+import org.activiti.engine.impl.db.redis.tools.operation.handlers.registryHandler;
 import org.activiti.engine.impl.db.redis.tools.operation.handlers.serviceTaskBindHandler;
 import org.activiti.engine.impl.db.redis.tools.operation.handlers.userTaskBindHandler;
+import org.activiti.engine.impl.db.redis.tools.operation.handlers.verifyHandler;
 
 
 public class operationSelector {
@@ -13,6 +16,9 @@ public class operationSelector {
     final Map<operation.oType,handler> selector=new HashMap<operation.oType,handler>() {{
         put(operation.oType.userTaskBind,new userTaskBindHandler());
         put(operation.oType.serviceTaskBind,new serviceTaskBindHandler());
+        put(operation.oType.userRegistry,new registryHandler());
+        put(operation.oType.verify,new verifyHandler());
+        put(operation.oType.deploy,new deployHandler());
     }};
 
     public String simulateHandle(operation o) {

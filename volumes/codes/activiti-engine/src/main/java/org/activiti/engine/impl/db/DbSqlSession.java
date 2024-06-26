@@ -221,6 +221,18 @@ public class DbSqlSession implements Session {
         entity.setInserted(true);
     }
 
+    public void flushInsert(Entity entity) {
+        Class<? extends Entity> clazz = entity.getClass();
+        if (!insertedObjects.containsKey(clazz)) {
+            insertedObjects.put(clazz,
+                                new LinkedHashMap<String, Entity>()); // order of insert is important, hence LinkedHashMap
+        }
+
+        insertedObjects.get(clazz).put(entity.getId(),
+                                       entity);
+        entity.setInserted(true);
+    }
+
     // update
     // ///////////////////////////////////////////////////////////////////
 
@@ -228,6 +240,10 @@ public class DbSqlSession implements Session {
         entityCache.put(entity,
                         false); // false -> we don't store state, meaning it will always be seen as changed
         entity.setUpdated(true);
+    }
+
+    public void flushUpdate(Entity entity) {
+        updatedObjects.add(entity);
     }
 
     public int update(String statement,
@@ -258,6 +274,17 @@ public class DbSqlSession implements Session {
 
 
     public void delete(Entity entity) {
+        Class<? extends Entity> clazz = entity.getClass();
+        if (!deletedObjects.containsKey(clazz)) {
+            deletedObjects.put(clazz,
+                               new LinkedHashMap<String, Entity>()); // order of insert is important, hence LinkedHashMap
+        }
+        deletedObjects.get(clazz).put(entity.getId(),
+                                      entity);
+        entity.setDeleted(true);
+    }
+
+    public void flushDelete(Entity entity) {
         Class<? extends Entity> clazz = entity.getClass();
         if (!deletedObjects.containsKey(clazz)) {
             deletedObjects.put(clazz,
@@ -607,7 +634,7 @@ public class DbSqlSession implements Session {
         useRedis.handleEntitiesFieldMap(loadedObjects);
     }
 
-    public void flushRedis() {
+    public void justFlush() {
         flushInserts();
         flushUpdates();
         flushDeletes();
@@ -753,15 +780,17 @@ public class DbSqlSession implements Session {
             useRedis.updateToRedis(updatedObjects);
             useRedis.deleteToRedis(deletedObjects);
         }
-        if (commandContext.isDeploy()) {
-            //deploy就同时直接写数据库了
-            flushInserts();
-            flushUpdates();
-            flushDeletes();
-        } else {
-            insertedObjects.clear();
-            deletedObjects.clear();
-        }
+        insertedObjects.clear();
+        deletedObjects.clear();
+        // if (commandContext.isDeploy()) {
+        //     //deploy就同时直接写数据库了
+        //     flushInserts();
+        //     flushUpdates();
+        //     flushDeletes();
+        // } else {
+        //     insertedObjects.clear();
+        //     deletedObjects.clear();
+        // }
         //useRedis.removeJedis();
 
     }

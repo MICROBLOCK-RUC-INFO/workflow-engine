@@ -5,7 +5,8 @@ import java.util.Map;
 public class operation {
     //暂时只有taskBind,有需要再添加
     public static enum oType {
-        userTaskBind,serviceTaskBind;        
+        userTaskBind,serviceTaskBind,
+        userRegistry,verify,deploy;        
     }
 
     private oType oType;

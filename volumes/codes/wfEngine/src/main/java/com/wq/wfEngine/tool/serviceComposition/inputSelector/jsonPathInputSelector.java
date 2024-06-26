@@ -26,8 +26,17 @@ public class jsonPathInputSelector implements inputSelectorInterface<String,Stri
         Object dataRoot=Configuration.defaultConfiguration().jsonProvider().parse(dataRootJson);
         Map<String,Object> resultMap=new HashMap<String,Object>();
         for (Entry<String,String> entry:selectMap.entrySet()) {
-            resultMap.put(entry.getKey(),JsonPath.read(dataRoot, entry.getValue()));
+            resultMap.put(entry.getKey(),JsonPath.read(dataRoot, process(entry.getValue())));
         }
         return jsonTransfer.toJsonString(resultMap);
+    }
+
+    private String process(String sentence) {
+        if (!sentence.startsWith("$")) {
+            //if (sentence.startsWith("all")) sentence="$.."+sentence;
+            //else sentence="$."+sentence;
+            sentence="$."+sentence;
+        }
+        return sentence;
     }
 }

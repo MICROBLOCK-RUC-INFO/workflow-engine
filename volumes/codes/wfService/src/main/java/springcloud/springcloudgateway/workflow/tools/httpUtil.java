@@ -9,6 +9,8 @@ import java.io.FileWriter;
 import java.io.FilterWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -168,6 +170,17 @@ public class httpUtil {
 
         });
         return future;
+    }
+
+    public static boolean isPortOpen(String host, int port, int timeout) {
+        try {
+            Socket socket = new Socket();
+            socket.connect(new InetSocketAddress(host, port), timeout); // 设置超时时间
+            socket.close(); // 连接成功后立即关闭Socket
+            return true; // 如果能够连接，则认为端口开放
+        } catch (Exception e) {
+            return false; // 如果发生异常，则认为端口不开放
+        }
     }
 
 }

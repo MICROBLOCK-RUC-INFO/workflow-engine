@@ -3,10 +3,22 @@ package springcloud.springcloudgateway.workflow;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,12 +42,17 @@ import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.entity.mime.FileBody;
 import org.hyperledger.fabric.sdk.ProposalResponse;
 import org.hyperledger.fabric.sdk.BlockEvent.TransactionEvent;
+import org.hyperledger.fabric.sdk.exception.CryptoException;
 import org.hyperledger.fabric.sdk.exception.InvalidArgumentException;
+import org.hyperledger.fabric.sdk.exception.ProposalException;
+import org.hyperledger.fabric.sdk.security.CryptoSuite;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 import springcloud.springcloudgateway.workflow.simulateCache.*;
 import springcloud.springcloudgateway.workflow.context.wfEngineContext;
@@ -135,6 +152,7 @@ public class wfEngine {
             put("httpMethod",verifyHttpMethod(httpMethod));
             put("route",route);
         }};
+        if (!isRegisterd(serviceName, serviceGroup)) throw new RuntimeException(String.format("serviceName:%s,groupName:%s,not registered", serviceName,serviceGroup));
         if (!serviceGroup.equals("")) serviceInfo.put("serviceGroup",serviceGroup);
         if (!input.equals("")) serviceInfo.put("input",verifyInput(input));
         if (!headers.equals("")) serviceInfo.put("headers",verifyHeaders(headers));
@@ -373,10 +391,6 @@ public class wfEngine {
                 count--;
                 //logger.info("第"+i+"个:"+response.getBodyText());
                 errorText.add(response.getBodyText());
-                // allOk=false;
-                // res=response.getBodyText();
-                // logger.error(res);
-                // break;
             } else {
                 String responseString=response.getBodyText();
                 workflowResponse wResponse=(workflowResponse)deCoder.streamToEntity(responseString);
@@ -452,7 +466,7 @@ public class wfEngine {
     }
 
     //list[0]是oid,list[1]是执行结果
-    public List<String> handleWorkflowRequest(Map<String,Object> requestMap,String fcn) throws IOException, InterruptedException, ExecutionException {
+    public List<String> handleWorkflowRequest(Map<String,Object> requestMap,String fcn) throws IOException, InterruptedException, ExecutionException{
         //String fcn=String.valueOf(requestMap.get("fcn"));
         String Oid=null;
         Map<String,Object> bodyMap=null;
@@ -471,6 +485,7 @@ public class wfEngine {
                 put("fileContent",fileContent);
             }};
             temp.put("deploymentName",deploymentName);
+            temp.put("signatures",requestMap.get("signatures"));
             bodyMap=temp;
             list.set(0,Oid);
         } else if (fcn.equals(instance)) {
@@ -530,6 +545,9 @@ public class wfEngine {
         return "success";        
     }
 
+    public long getBlockHeight() throws ProposalException, InvalidArgumentException {
+        return workflowFabric.getBlockHeight();
+    }
 
     public void getBindPackageData() {
         if (!commonUseSimulateCache.isBindNeedFlush()) return;
@@ -546,6 +564,141 @@ public class wfEngine {
         }};
         flushThreadPool.flush(new commonUseUpLinkRunnable(workflowFabric, channelName, chaincodeName, "flush", args, activitiChangeExecutor));
         logger.info("get CommonUse UpLink data success");
+    }
+
+    public Pair<Boolean, String> bindVerify(String json) throws InterruptedException, ExecutionException {
+        Iterator<String> peerIps= workflowFabric.getPeersIp(channelName).iterator();
+        String activitiPort=wfConfig.getWorkflowPort();
+        StringBuilder sb=new StringBuilder();
+        List<String> verifyUrls=new ArrayList<>();
+        while(peerIps.hasNext()) {
+            sb.append("http://").append(peerIps.next()).append(":")
+              .append(activitiPort).append("/wfEngine/verifyServiceBind");
+              verifyUrls.add(sb.toString());
+              sb.setLength(0);
+        }
+        List<Future<SimpleHttpResponse>> verifyFutures=httpUtil.multiPost(verifyUrls.iterator(), json);
+        Pair<Boolean,String> verifyPair=compareResponse(verifyFutures);
+        //比较背书的结果失败，返回false
+        if (!verifyPair.getLeft().booleanValue())  return verifyPair;
+        else return Pair.of(true, "ok");
+    }
+
+    public String handleServiceRegisty(String provider,String serviceMetaData,String signature) throws InterruptedException, ExecutionException {
+        Iterator<String> peerIps= workflowFabric.getPeersIp(channelName).iterator();
+        String activitiPort=wfConfig.getWorkflowPort();
+        StringBuilder sb=new StringBuilder();
+        List<String> verifyUrls=new ArrayList<>();
+        while(peerIps.hasNext()) {
+            sb.append("http://").append(peerIps.next()).append(":")
+              .append(activitiPort).append("/wfEngine/verifyServiceRegister");
+              verifyUrls.add(sb.toString());
+              sb.setLength(0);
+        }
+        Map<String,Object> data=new HashMap<String,Object>(){{
+            put("name",provider);
+            put("data",serviceMetaData);
+            put("signature",signature);
+        }};
+        List<Future<SimpleHttpResponse>> verifyFutures=httpUtil.multiPost(verifyUrls.iterator(), jsonTransfer.mapToJsonString(data));
+        Pair<Boolean,String> verifyPair=compareResponse(verifyFutures);
+        //比较背书的结果失败，返回false
+        if (!verifyPair.getLeft().booleanValue())  return verifyPair.getRight();
+        Map<String,Object> serviceMetaDataMap=jsonTransfer.jsonToMap(serviceMetaData);
+        String serviceIp=String.valueOf(serviceMetaDataMap.get("ip"));
+        String servicePort=String.valueOf(serviceMetaDataMap.get("port"));
+        if (!isPortOpen(serviceIp, Integer.valueOf(servicePort).intValue(), 1000)) {
+            throw new RuntimeException(String.format("ip %s,port %s can not connect", serviceIp,servicePort));
+        }
+        StringBuilder nacosUrl=new StringBuilder();
+        peerIps= workflowFabric.getPeersIp(channelName).iterator();
+        while (peerIps.hasNext()) {
+            String ip=peerIps.next();
+            if(httpUtil.isPortOpen(ip, 8848, 500)) {
+                nacosUrl.append("http://").append(ip).append(":8848/nacos/v1/ns/instance?")
+                        .append("port=").append(serviceMetaDataMap.get("port"))
+                        .append("&healthy=true&")
+                        .append("ip=").append(serviceMetaDataMap.get("ip"))
+                        .append("&weight=1.0&")
+                        .append("serviceName=");
+                if (serviceMetaDataMap.containsKey("serviceGroup")) {
+                    nacosUrl.append(serviceMetaDataMap.get("serviceGroup")).append("@@");
+                }
+                nacosUrl.append(serviceMetaDataMap.get("serviceName")).append("&encoding=GBK");
+                break;
+            }
+        }
+        if (nacosUrl.length()==0) throw new RuntimeException("所有nacos都没有启动");
+        else return httpUtil.doPost(nacosUrl.toString(), "").get().getBodyText(); 
+
+    }
+
+    private boolean isRegisterd(String serviceName,String groupName) {
+        try {
+            if (groupName.equals("")) {
+                groupName="DEFAULT_GROUP";
+            }
+            String response=httpUtil.doGet("http://127.0.0.1:8848/nacos/v1/ns/service/names").get().getBodyText();
+            Map<String,JSONArray> serviceNameMap=(Map<String,JSONArray>)JSON.parseObject(response).get("services");
+            for (JSONArray sets:serviceNameMap.values()) {
+                for (int i=0;i<sets.size();i++) {
+                    JSONObject json=sets.getJSONObject(i);
+                    if (json!=null&&json.getString("serviceName").equals(serviceName)&&json.getString("groupName").equals(groupName)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private boolean isPortOpen(String host, int port, int timeout) {
+        try {
+            Socket socket = new Socket();
+            socket.connect(new InetSocketAddress(host, port), timeout); // 设置超时时间
+            socket.close(); // 连接成功后立即关闭Socket
+            return true; // 如果能够连接，则认为端口开放
+        } catch (Exception e) {
+            return false; // 如果发生异常，则认为端口不开放
+        }
+    }
+
+    public Pair<Boolean, String> handleRegister(String name,String oldPrivateKey) throws CryptoException, IllegalAccessException, InstantiationException, ClassNotFoundException, InvalidArgumentException, NoSuchMethodException, InvocationTargetException, InterruptedException, ExecutionException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        KeyPair keyPair= CryptoSuite.Factory.getCryptoSuite().keyGen();
+        PrivateKey privateKey=keyPair.getPrivate();
+        PublicKey publicKey=keyPair.getPublic();
+        String priKey=Base64.getEncoder().encodeToString(privateKey.getEncoded());
+        String pubKey=Base64.getEncoder().encodeToString(publicKey.getEncoded());
+
+        Map<String,Object> requestMap=new HashMap<String,Object>(){{
+            put("name",name);
+            put("privateKey",priKey);
+            put("publicKey",pubKey);
+            if(oldPrivateKey!="") {put("oldPrivateKey",oldPrivateKey);}
+        }};
+        String port=wfConfig.getWorkflowPort();
+        List<String> simulateBindUrls=new ArrayList<String>();
+        Iterator<String> peerIps= workflowFabric.getPeersIp(channelName).iterator();
+        StringBuilder sb=new StringBuilder();
+        while (peerIps.hasNext()) {
+            sb.append("http://").append(peerIps.next()).append(':')
+              .append(port).append("/wfEngine/register");
+            simulateBindUrls.add(sb.toString());
+            sb.setLength(0);
+        }
+        List<Future<SimpleHttpResponse>> simulateFutures=httpUtil.multiPost(simulateBindUrls.iterator(), jsonTransfer.mapToJsonString(requestMap));
+        Pair<Boolean,String> simulatePair=compareResponse(simulateFutures);
+        //比较背书的结果失败，返回false
+        if (!simulatePair.getLeft().booleanValue())  return simulatePair;
+        Signature sig=Signature.getInstance("SHA256withECDSA");
+        sig.initSign(privateKey);
+        sig.update(jsonTransfer.mapToJsonString(requestMap).getBytes());
+        String signedData=Base64.getEncoder().encodeToString(sig.sign());
+        //commonUseSimulateCache.bindSimulateStore(keyCombination.combine(name,"register"), signedData);
+        return Pair.of(true, priKey);
     }
 
     /**

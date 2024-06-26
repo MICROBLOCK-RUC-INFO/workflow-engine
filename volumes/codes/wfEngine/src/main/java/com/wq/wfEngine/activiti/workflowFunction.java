@@ -1,57 +1,38 @@
 package com.wq.wfEngine.activiti;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
+
 
 import org.activiti.bpmn.model.Activity;
 import org.activiti.bpmn.model.BpmnModel;
-import org.activiti.bpmn.model.FlowElement;
-import org.activiti.bpmn.model.FlowNode;
-import org.activiti.bpmn.model.MessageFlow;
 import org.activiti.bpmn.model.Process;
-import org.activiti.bpmn.model.SequenceFlow;
+
 import org.activiti.bpmn.model.ServiceTask;
-import org.activiti.bpmn.model.SubProcess;
 import org.activiti.bpmn.model.UserTask;
 import org.activiti.engine.HistoryService;
 import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.RepositoryService;
 import org.activiti.engine.RuntimeService;
 import org.activiti.engine.TaskService;
-import org.activiti.engine.impl.context.Context;
-import org.activiti.engine.impl.db.cache.allocationTable;
 import org.activiti.engine.impl.db.redis.workflowContext;
 import org.activiti.engine.impl.db.redis.tools.operation.operations.operation;
 import org.activiti.engine.impl.db.redis.tools.operation.operations.operation.oType;
 import org.activiti.engine.impl.db.workflowClass.cachedResponse;
 import org.activiti.engine.impl.db.workflowClass.randomGenerator;
-import org.activiti.engine.impl.db.workflowClass.workflowResponse;
 import org.activiti.engine.repository.Deployment;
-import org.activiti.engine.task.Task;
 import org.activiti.image.impl.DefaultProcessDiagramGenerator;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.springframework.stereotype.Service;
 
-import com.alibaba.fastjson.JSON;
 import com.wq.wfEngine.cache.cachedData;
 import com.wq.wfEngine.cache.cachedServiceTaskResult;
 import com.wq.wfEngine.config.evilNodeConfig;
+//import com.wq.wfEngine.taskService.locks.unReleaseUrls;
 import com.wq.wfEngine.tool.jsonTransfer;
 
 
@@ -221,9 +202,30 @@ public class workflowFunction {
         cachedData.storeWorkflowResponse(response, Oid);
         //如果是预先执行的设置serviceTaskResultJson
         response.setServiceTaskResultJson(jsonTransfer.serviceTaskResToJsonString(cachedServiceTaskResult.removeServiceTaskRes(Oid)));
-        
         //返回给请求方的数据
         return response.getEncodeString(); 
+        // try {
+        //     //拿到需要实例化的第一个流程Id
+        //     String mainProcessId=cachedData.getMainProcessId(deploymentName);
+        //     //实例化
+        //     runtimeService.startProcessInstanceById(mainProcessId,variables);
+        //     //拿到实例化的workflowResponse
+        //     cachedResponse response=runtimeService.getWorkflowResponse(Oid);
+            
+
+        //     //存至缓存，等待flush时更新，对应实例的状态
+        //     cachedData.storeWorkflowResponse(response, Oid);
+        //     //如果是预先执行的设置serviceTaskResultJson
+        //     response.setServiceTaskResultJson(jsonTransfer.serviceTaskResToJsonString(cachedServiceTaskResult.removeServiceTaskRes(Oid)));
+        //     response.setServiceUrls(unReleaseUrls.getUrls());
+        //     //返回给请求方的数据
+        //     return response.getEncodeString(); 
+        // } catch (Exception e) {
+        //     if (!e.getMessage().contains("加锁失败")) unReleaseUrls.rollBack(Oid);
+        //     throw e;
+        // } finally {
+        //     unReleaseUrls.reset();
+        // }
     }
 
 
@@ -257,8 +259,27 @@ public class workflowFunction {
         //如果是预先执行的设置serviceTaskResultJson
         response.setServiceTaskResultJson(jsonTransfer.serviceTaskResToJsonString(cachedServiceTaskResult.removeServiceTaskRes(Oid)));
 
-
+        //response.setServiceUrls(unReleaseUrls.getUrls());
         return response.getEncodeString();
+        // try {
+        //     //先完成complete
+        //     taskService.complete(taskId, variables,false);
+
+        //     cachedResponse response=runtimeService.getWorkflowResponse(Oid);
+
+        //     //存至缓存，等待flush时更新，对应实例的状态
+        //     cachedData.storeWorkflowResponse(response, Oid);
+        //     //如果是预先执行的设置serviceTaskResultJson
+        //     response.setServiceTaskResultJson(jsonTransfer.serviceTaskResToJsonString(cachedServiceTaskResult.removeServiceTaskRes(Oid)));
+
+        //     response.setServiceUrls(unReleaseUrls.getUrls());
+        //     return response.getEncodeString();
+        // } catch (Exception e) {
+        //     if (!e.getMessage().contains("加锁失败")) unReleaseUrls.rollBack(Oid);
+        //     throw e;
+        // } finally {
+        //     unReleaseUrls.reset();
+        // }
     }
 
     /**

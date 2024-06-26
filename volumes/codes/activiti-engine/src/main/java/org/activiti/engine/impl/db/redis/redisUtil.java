@@ -14,6 +14,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 
 public class redisUtil {
+    private static StringRedisTemplate operatorRedis;
+
     @SuppressWarnings("rawtypes")
     public StringRedisTemplate getstringRedisTemplate() {
         RedisStandaloneConfiguration redisConfiguration=new RedisStandaloneConfiguration("localhost", 6379);
@@ -27,7 +29,8 @@ public class redisUtil {
     } 
 
     @SuppressWarnings("rawtypes")
-    public StringRedisTemplate getTableRedisClient() {
+    public synchronized static StringRedisTemplate getTableRedisClient() {
+        if (operatorRedis!=null) return operatorRedis;
         RedisStandaloneConfiguration redisConfiguration=new RedisStandaloneConfiguration("localhost", 6379);
         redisConfiguration.setDatabase(1);
         
@@ -35,6 +38,7 @@ public class redisUtil {
         //LettuceConnectionFactory connectionFactory=new LettuceConnectionFactory(redisConfiguration);
         connectionFactory.afterPropertiesSet();
         StringRedisTemplate stringRedisTemplate=new StringRedisTemplate(connectionFactory);
+        operatorRedis=stringRedisTemplate;
         return stringRedisTemplate;
     } 
 

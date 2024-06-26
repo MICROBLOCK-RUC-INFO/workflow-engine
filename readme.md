@@ -167,7 +167,24 @@ docker exec peer0.org2.workflow.com sh /usr/local/scripts/nacosScripts/nacosStar
 docker exec peer0.org3.workflow.com sh /usr/local/scripts/nacosScripts/nacosStart.sh &
 ```
 
-## 3.Create and register services
+## 3.register org
+
+name is the name og org，and it will generater a ECDSA keyPair randomly
+
+```shell
+curl --location 'localhost:8999/grafana/register' \
+--form 'name="sunzhouxing111"'
+```
+
+this is response,name and privateKey
+
+```
+{"privateKey":"MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgGwuL9ptRs6I+QoiKV20FznIDmMvyh1YiBJD69EaET2KgCgYIKoZIzj0DAQehRANCAATbdfJEQnmKkMiYFf4cZyDJfLrQtOSdIVjKaE1sqCcmVtiJEHyEfQ4paiOMCXHKFD5U6qMKDCCx7jWd8osC0l7k","name":"sunzhouxing111"}
+```
+
+将该字符串保存在文件即可
+
+## 4.Create and register services
 
 * A sample service named 'testService' is available. The '/test' URI of this service directly sends back the received JSON string to the user. Use Maven to create a service
 
@@ -206,9 +223,21 @@ curl --request POST \
 * register this service
 
 ```shell
-curl -X POST 'http://{localhost IP}:{port of nacos}/nacos/v1/ns/instance?port={service port}&healthy=true&ip={service IP}&weight=1.0&serviceName={serviceGroup}@@{serviceName}&encoding=GBK'
+curl --location 'localhost:8999/grafana/serviceRegister' \
+--header 'Content-Type: application/json' \
+--data '{
+    "provider":"{服务提供方}",
+    "serviceMetaData":"{\"port\":\"{服务端口}\",\"ip\":\"{服务ip}\",\"serviceName\":\"{服务名}\",\"serviceGroup\":\"{服务分组}\"}",
+    "signature":"{服务提供方对serviceMetaData的签名}"
+}'
 #example
-curl -X POST 'http://127.0.0.1:7848/nacos/v1/ns/instance?port=6666&healthy=true&ip=10.47.33.219&weight=1.0&serviceName=WORKFLOW@@testService&encoding=GBK'
+curl --location 'localhost:8999/grafana/serviceRegister' \
+--header 'Content-Type: application/json' \
+--data '{
+    "provider":"sunzhouxing111",
+    "serviceMetaData":"{\"port\":\"8888\",\"ip\":\"10.77.70.124\",\"serviceName\":\"sunLocalTest\",\"serviceGroup\":\"WORKFLOW\"}",
+    "signature":"MEUCIQDUaNC6Fd7unkLG4agKVOVffkdKEVC1BpVoO9O9nFYpVgIgaZJAaN8jjTgnLR4Cu3JFLQ2r0l9psgh7I1dUKlYs80E="
+}'
 ```
 
 **note**
@@ -223,7 +252,7 @@ curl -X POST 'http://127.0.0.1:7848/nacos/v1/ns/instance?port=6666&healthy=true&
 
 
 
-## 4.Edit the bpmn diagram
+## 5.Edit the bpmn diagram
 
 * start bpmn editor
 
@@ -254,22 +283,20 @@ npm run dev
 
 ![](./jpg/editorBpmn.png)
 
-## 5.Deploy the bpmn diagram
+## 6.Deploy the bpmn diagram
 
 * deploy the bpmn diagram
 
 ```shell
-curl --request POST \
-  --url http://{localhost IP}:{port of workflow engine service}/grafana/wfRequest/deploy \
-  --header 'content-type: multipart/form-data' \
-  --form file=@{path of bpmn file}\
-  --form deploymentName={workflow name}
+curl --location '127.0.0.1:8999/grafana/wfRequest/deploy' \
+--form 'file=@"{filePath}"' \
+--form 'deploymentName="{部署名}"' \
+--form 'signatures=@"{签名文件路径}"'
 #example
-curl --request POST \
-  --url http://127.0.0.1:8999/grafana/wfRequest/deploy \
-  --header 'content-type: multipart/form-data' \
-  --form file=@/users/dreamingworld/Fabric/workflow-engine/simpleSample.bpmn \
-  --form deploymentName=simpleSample.bpmn
+curl --location '127.0.0.1:8999/grafana/wfRequest/deploy' \
+--form 'file=@"/home/sunweekstar/signTool/simpleSample.bpmn"' \
+--form 'deploymentName="simpleSample.bpmn"' \
+--form 'signatures=@"/home/sunweekstar/signTool/sigs"'
 ```
 
 **output**
@@ -300,7 +327,7 @@ Oids of deployed bpmn diagrams,    ["simpleSample.bpmn"]
 
 
 
-## 6.instantiate a BPMN diagram
+## 7.instantiate a BPMN diagram
 
 * instantiate a BPMN diagram
 
@@ -349,7 +376,7 @@ curl --request POST \
 
 
 
-## 7.dynamic BInd
+## 8.dynamic BInd
 
 Dynamic binding allows the registered service to be dynamically bound to the service task in the workflow instance, or for the executor to be dynamically assigned to the user task.
 
@@ -378,6 +405,12 @@ curl --request POST \
 * bind the service to the serviceTask
 
 ```shell
+curl --location 'localhost:8999/grafana/serviceDynamicBind' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+   "data":"{\"oid\":\"流程实例标识\",\"taskName\":\"服务任务名\",\"serviceName\":\"服务名\",\"httpMethod\":\"服务分组\",\"route\":\"路径\",\"input\":\"{input}\",\"serviceGroup\":\"{serviceGroup}\",\"headers\":\"{需要添加的头部}\",\"output\":\"{output}\"}",
+   "sigs":"签名列表"
+}'
 curl --request POST \
   --url http://{localhost IP}:{port of workflow engine service}/grafana/serviceDynamicBind \
   --header 'content-type: application/x-www-form-urlencoded' \
@@ -389,16 +422,12 @@ curl --request POST \
   --data '{input}' \
   --data serviceGroup={serviceGroup}
 # example
-curl --request POST \
-  --url http://127.0.0.1:8999/grafana/serviceDynamicBind \
-  --header 'content-type: application/x-www-form-urlencoded' \
-  --data oid=simpleSample.bpmn@0f513fc9-3a9e-40cf-8ffb-3d5bbf88c62f \
-  --data taskName=task3 \
-  --data serviceName=testService \
-  --data httpMethod=POST \
-  --data route=/test \
-  --data 'input={"ID":"init.ID","Address":"sun.Address"}' \
-  --data serviceGroup=WORKFLOW
+curl --location 'localhost:8999/grafana/serviceDynamicBind' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+   "data":"{\"oid\":\"simpleSample.bpmn@1c03a85b-491d-489d-9b73-2d036d67b816\",\"taskName\":\"task1\",\"serviceName\":\"sunLocalTest\",\"httpMethod\":\"POST\",\"route\":\"/test\",\"input\":\"{\\\"ID\\\":\\\"init.ID\\\",\\\"Address\\\":\\\"sun.Address\\\"}\",\"serviceGroup\":\"WORKFLOW\",\"headers\":\"{}\",\"output\":\"{}\"}",
+   "sigs":"[{\"name\": \"sunzhouxing111\", \"signature\": \"MEYCIQDbndix8Ltvjl2aikfm3WKxkHfvhm+LQweFCL3yrtRirQIhAKu33PxmkKYF/ZmYgT8T65kuCAxT/AFnMJNhXsuyCAJR\"}, {\"name\": \"sunzhouxing222\", \"signature\": \"MEQCIF3kK+I3QmXP8I6AQibjMh5jwf3xW+oCYh0GTgj6Jhm6AiBS3Q7og9UyeQlmc9RaEsE2cmyTNnguyBgbsWLyqf5Z5A==\"}]"
+}'
 ```
 
 **Property description of serviceTask**
@@ -425,7 +454,7 @@ curl --request POST \
   * {"Address":"sun.Address"} "sun" represents the name of a service task, and "Address" represents the Address field in the output of the service task.
   * For example, in the case of userTask "submit," if the input submitted by the executor is {"ID":"001", "Name":"Wang", "Address":"Beijing"} and for the serviceTask "sun,"  assuming its output is {"Address":"Beijing"}, the input for the service would be {"ID":"001", "Address":"Beijing"} based on the input parameters.
 
-## 8.Execute the userTask
+## 9.Execute the userTask
 
 * execute the userTask
 
@@ -468,7 +497,7 @@ curl --request POST \
 
 
 
-## 9.Get the response(execution result)
+## 10.Get the response(execution result)
 
 * Use the operation to obtain the final execution result
 

@@ -12,6 +12,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ */
 public class ServiceCache {
     private ConcurrentHashMap<String,Map<String,Pair<Object,Boolean>>> cache=new ConcurrentHashMap<>();
     private final Logger logger=LoggerFactory.getLogger(ServiceCache.class);

@@ -19,8 +19,10 @@ import org.activiti.engine.RepositoryService;
 import org.activiti.engine.RuntimeService;
 import org.activiti.engine.TaskService;
 import org.activiti.engine.impl.db.redis.entityFieldMap;
+import org.activiti.engine.impl.db.redis.workflowContext;
 import org.activiti.engine.impl.db.redis.tools.operation.operations.operation;
 import org.activiti.engine.impl.db.redis.tools.operation.operations.operationBuilder;
+import org.activiti.engine.impl.db.redis.tools.operation.operations.operationSelector;
 import org.activiti.engine.impl.db.redis.tools.operation.operations.operation.oType;
 import org.activiti.engine.impl.db.workflowClass.proto.entity.simpleEntity.opType;
 import org.activiti.engine.repository.Deployment;
@@ -48,8 +50,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,9 +66,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @Controller
 @RequestMapping("wfEngine")
+@CrossOrigin
 public class WorkFlowController {
     
     ProcessEngine processEngine = ActivitiUtils.processEngine;
@@ -91,6 +100,16 @@ public class WorkFlowController {
         return String.format("nacos start %s ,monitor start %s", nacos.isAlive()?"success":"failed",monitor.isAlive()?"success":"failed");
     }
 
+    @RequestMapping(value="/testHash", method=RequestMethod.POST)
+    @ResponseBody
+    public String testHash(@RequestBody String req) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        Map<String,Object> reqMap=jsonTransfer.jsonToMap(req);
+        String data=String.valueOf(reqMap.get("data"));
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] dataHash = digest.digest(data.getBytes("UTF-8"));
+        return Base64.getEncoder().encodeToString(dataHash);
+    }
+    
     /**
      * 
      * @param req {oid:,taskName:,value:}
@@ -140,6 +159,46 @@ public class WorkFlowController {
         if (res) return "ok";
         else throw new RuntimeException("commonFlush Error");
     }
+
+    @RequestMapping(value="/register", method=RequestMethod.POST)
+    @ResponseBody
+    public String register(@RequestBody String req) {
+        Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
+        operation o=new operationBuilder().setType(oType.userRegistry).setParams(requestMap).build();
+        boolean res=workflowFunction.commonFlush(o);
+        if (res) return "ok";
+        else throw new RuntimeException("register Error");
+    }
+
+    @RequestMapping(value="/verifyServiceRegister", method=RequestMethod.POST)
+    @ResponseBody
+    public String verifyServiceRegister(@RequestBody String req) {
+        Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
+        operation o= new operationBuilder().setType(oType.verify).setParams(requestMap).build();
+        boolean res=workflowFunction.commonFlush(o);
+        if (res) return "ok";
+        else throw new RuntimeException("serviceRegister Error");
+    }
+    
+    @RequestMapping(value="/verifyServiceBind", method=RequestMethod.POST)
+    @ResponseBody
+    public String verifyServiceBind(@RequestBody String req) {
+        Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
+        String data=String.valueOf(requestMap.get("data"));
+        List<Map<String,Object>> sigs=jsonTransfer.jsonToSigs(String.valueOf(requestMap.get("sigs")));
+        List<String[]> list=new ArrayList<>();
+        for (int i=0;i<sigs.size();i++) {
+            String[] strs=new String[2];
+            strs[0]=String.valueOf(sigs.get(i).get("name"));
+            strs[1]=String.valueOf(sigs.get(i).get("signature"));
+            list.add(strs);
+        }
+        String deploymentName=String.valueOf(jsonTransfer.jsonToMap(data).get("oid")).split("@")[0];
+        boolean res=workflowContext.getUserTaskBindHandler().verifies(data, deploymentName,list);
+        if (res) return "ok";
+        else throw new RuntimeException("serviceBind Error");
+    }
+    
 
     @CrossOrigin
     @RequestMapping(value = "/downloadBpmn", method = {RequestMethod.GET,RequestMethod.POST})
@@ -288,13 +347,24 @@ public class WorkFlowController {
     @CrossOrigin
     @RequestMapping(value = "/wfDeploy", method = RequestMethod.POST)
     @ResponseBody
-    public String wfDeploy(@RequestBody String req) {
+    public String wfDeploy(@RequestBody String req) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
         String deploymentName=String.valueOf(requestMap.get("deploymentName"));
         if (!deploymentName.substring(deploymentName.length()-5, deploymentName.length()).equals(".bpmn")) {
             throw new RuntimeException("deployment must end with .bpmn");
         }
         String fileContent=String.valueOf(requestMap.get("fileContent"));
+
+        List<Map<String,Object>> sigs=jsonTransfer.jsonToSigs(String.valueOf(requestMap.get("signatures")));
+        List<String[]> list=new ArrayList<>();
+        for (int i=0;i<sigs.size();i++) {
+            String[] strs=new String[2];
+            strs[0]=String.valueOf(sigs.get(i).get("name"));
+            strs[1]=String.valueOf(sigs.get(i).get("signature"));
+            list.add(strs);
+        }
+        boolean res=workflowContext.getUserTaskBindHandler().verifies(fileContent, list,deploymentName,true);
+        if (!res) throw new RuntimeException("deploy signature验证失败");
         //System.out.println("fileName:"+fileName);
         //System.out.println("fileContent:"+fileContent);
         return workflowFunction.deploy(deploymentName, fileContent);

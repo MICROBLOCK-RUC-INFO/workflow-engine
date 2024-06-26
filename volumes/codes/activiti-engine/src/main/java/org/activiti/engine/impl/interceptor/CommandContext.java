@@ -102,6 +102,22 @@ public class CommandContext {
     private Stack<Boolean> isExecuteServiceTask=new Stack<>();
     private int monitorNumber;
     private int monitorAmount=0;
+    private List<String> serviceUrls=new ArrayList<>();
+
+    public void reset() {
+        this.cachedOutput=new HashMap<>();
+        this.serviceTaskResults=null;
+        this.isDeploy=false;
+        this.serviceUrls=new ArrayList<>();
+    }
+
+    public void addServiceUrl(String url) {
+        serviceUrls.add(url);
+    }
+
+    public List<String> getServiceUrls() {
+        return serviceUrls;
+    }
     
 
     public void setServiceTaskResults(Map<String,serviceTaskRes> serviceTaskResults) {
@@ -279,6 +295,7 @@ public class CommandContext {
                 exception(exception);
             } finally {
                 // Sessions need to be closed, regardless of exceptions/commit/rollback
+                reset();
                 closeSessions();
             }
         } catch (Throwable exception) {

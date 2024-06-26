@@ -3,9 +3,11 @@ package org.activiti.engine.impl.db.workflowClass;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,11 +25,17 @@ public class cachedResponse {
     private String serviceTaskResultJson;
     private String readSetJson;
     private String writeSetJson;
+    private List<String> serviceUrls=new ArrayList<>();
     
+
     public cachedResponse() {
         
     }
     
+    public List<String> getServiceUrls() {
+        return serviceUrls;
+    }
+
     
 
     public String getReadSetJson() {
@@ -137,6 +145,10 @@ public class cachedResponse {
                      .append("deploymentName:").append(deploymentName).append('|')
                      .append("businessData").append(businessData);
         return stringBuilder.toString();
+    }
+
+    public void setServiceUrls(List<String> serviceUrls) {
+        this.serviceUrls = serviceUrls;
     }
 }
 

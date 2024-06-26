@@ -67,14 +67,6 @@ public  class useRedis {
     static public StringRedisTemplate stringRedisTemplate=new redisUtil().getstringRedisTemplate();
     private static final ThreadLocal<Map<String,String>> threadLocalCache=new ThreadLocal<Map<String,String>>();
     private static final ThreadLocal<List<String>> threadLocalReadList=new ThreadLocal<List<String>>();
-    //private static final JedisPool jedisPool=redisUtil.getJedisPool();
-    // private static final Jedis mutilSetJedis =redisUtil.getMutilSetJedis();
-    // private static final Jedis singleSetJedis =redisUtil.getSingleSetJedis();
-    //private static final Jedis getJedis =redisUtil.getGetJedis();
-    // private static final Map<String,Jedis> getJedisMap=redisUtil.getGetJedisMap();
-    // private static final Jedis deleteJedis =redisUtil.getDeleteJedis();
-    // private static final Jedis entityIdJedis =redisUtil.getEntityIdJedis();
-    // private static final Jedis otherJedis =redisUtil.getOtherJedis();
     private static long idLimit=20L;
     private static long nowId=20L;
     //用于取id加锁的对象
@@ -91,14 +83,6 @@ public  class useRedis {
             idLimit=Long.valueOf(stringRedisTemplate.opsForValue().get("ActivityEntityId")).longValue();
             nowId=idLimit;
         }
-        // if (!otherJedis.exists("ActivityEntityId")) {
-        //     synchronized (singleSetJedis) {
-        //         singleSetJedis.set("ActivityEntityId","20");
-        //     }
-        // } else {
-        //     idLimit=Long.valueOf(otherJedis.get("ActivityEntityId"));
-        //     nowId=Long.valueOf(idLimit.longValue());
-        // }
     }
 
     public static Map<String,String> getReadEntities() {
@@ -148,14 +132,17 @@ public  class useRedis {
                 StringBuilder stringBuilder=new StringBuilder();
                 stringBuilder.append(typeTransfer.getSimpleType.get(clazz.toString())).append('-');
                 int prefixLength=stringBuilder.length();
+                //t-
                 //String prefix=typeTransfer.getSimpleType.get(clazz.toString())+"-";
                 Map<String,Entity> entityMap=deletedObjects.get(clazz);
                 removeDeleteObjectsFieldMap(clazz,entityMap.values());
                 for (String entityId:entityMap.keySet()) {
                     stringBuilder.append(entityId);
+                    //t-20
                     //String key=prefix+entityId;
                     removeList.add(stringBuilder.toString());
                     stringBuilder.setLength(prefixLength);
+                    //t-20->t-
                 }
             }
         }
@@ -534,31 +521,6 @@ public  class useRedis {
             //System.out.println("14");
             handleEventSubSrcEntitiesFieldMap(entities);
         }
-        // switch (clazz) {
-        //     case TaskClass:
-        //     handleTaskEntitiesFieldMap(entities);
-        //     break;
-        //     case VariableClass:
-        //     handleVariableInstanceEntitiesFieldMap(entities);
-        //     break;
-        //     case ExecutionClass:
-        //     handleExecutionEntitiesFieldMap(entities);
-        //     break;
-        //     case ProcessDefinitionClass:
-        //     handleProcessDefinitionEntitiesFieldMap(entities);
-        //     break;
-        //     case DeploymentClass:
-        //     handleDeploymentEntitiesFieldMap(entities);
-        //     break;
-        //     case ResourceClass:
-        //     handleResourceEntitiesFieldMap(entities);
-        //     break;
-        //     case EventClass:
-        //     handleEventSubSrcEntitiesFieldMap(entities);
-        //     break;
-        //     default:
-        //     return;
-        // }
     }
 
     public static void handleEntityFieldMap(Entity entity) {
@@ -578,31 +540,6 @@ public  class useRedis {
         } else if (entity instanceof EventSubscriptionEntityImpl) {
             handleEventSubSrcEntityFieldMap(entity);
         }
-        // switch (clazz.toString()) {
-        //     case TaskClass:
-        //     handleTaskEntityFieldMap(entity);
-        //     break;
-        //     case VariableClass:
-        //     handleVariableInstanceEntityFieldMap(entity);
-        //     break;
-        //     case ExecutionClass:
-        //     handleExecutionEntityFieldMap(entity);
-        //     break;
-        //     case ProcessDefinitionClass:
-        //     handleProcessDefinitionEntityFieldMap(entity);
-        //     break;
-        //     case DeploymentClass:
-        //     handleDeploymentEntityFieldMap(entity);
-        //     break;
-        //     case ResourceClass:
-        //     handleResourceEntityFieldMap(entity);
-        //     break;
-        //     case EventClass:
-        //     handleEventSubSrcEntityFieldMap(entity);
-        //     break;
-        //     default:
-        //     return;
-        // }
     }
 
     public static void handleTaskEntitiesFieldMap(Collection<Entity> entities) {

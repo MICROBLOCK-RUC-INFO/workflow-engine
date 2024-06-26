@@ -1,6 +1,11 @@
 package springcloud.springcloudgateway.controller;
 
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.entity.ContentType;
+import org.hyperledger.fabric.sdk.exception.CryptoException;
+import org.hyperledger.fabric.sdk.exception.InvalidArgumentException;
+import org.hyperledger.fabric.sdk.exception.ProposalException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,11 +42,28 @@ import springcloud.springcloudgateway.workflow.wfEngine.queryType;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 
 import javax.annotation.Resource;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+
+
 
 @CrossOrigin(allowCredentials = "true")
 @RestController
@@ -208,26 +230,74 @@ public class MonitorController implements DataController {
         return stringBuilder.toString();
     }
 
-    @RequestMapping(value= "/wfRequest/deploy",method=RequestMethod.POST)
-    public Map<String,Object> deploy(HttpServletRequest request) {
+        /**
+     * @apiNote 根据header的不同转发至不同端口，formData是有文件的
+     * @param req
+     * @param resp
+     * @throws ServletException
+     * @throws IOException
+     */
+    @RequestMapping(value="/wfRequest/deploy",method=RequestMethod.POST)
+    @ResponseBody
+    public void deploy(HttpServletRequest req,HttpServletResponse resp) throws ServletException, IOException {
+        String contentType= req.getContentType().toLowerCase();
+        logger.info(contentType.toString());
+        if (contentType.contains(ContentType.APPLICATION_JSON.toString().split(";")[0])) {
+            req.getRequestDispatcher("/grafana/wfRequest/deploy/json").forward(req, resp);
+        } else if (contentType.contains(ContentType.MULTIPART_FORM_DATA.toString().split(";")[0])) {
+            req.getRequestDispatcher("/grafana/wfRequest/deploy/form").forward(req, resp);
+        }
+    }
+
+    @RequestMapping(value= "/wfRequest/deploy/json",method=RequestMethod.POST)
+    public Map<String,Object> deployJson(@RequestBody String req) throws IOException, InterruptedException, ExecutionException {
+
+        Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
+        List<String> list=wfEngine.handleWorkflowRequest(requestMap, wfEngine.deploy);
+        String Oid=list.get(0);
+        String preRes=list.get(1);
+        if (!preRes.equals("success")) {
+            if (wfConfig.isTest()) {
+                httpUtil.doGet("http://10.77.110.222:9988/informResponse/"+URLEncoder.encode(Oid, "UTF-8")+"/simulateError/"+false);
+            }
+            return new HashMap<String,Object>() {{put("code",500);put("body",preRes);put("Oid",Oid);put("模拟执行结果",false);}};
+        }
+        return new HashMap<String,Object>() {{put("code",200);put("body","等待上链,更改状态");put("Oid",Oid);put("模拟执行结果",true);}};
+
+    }
+
+    @RequestMapping(value= "/wfRequest/deploy/form",method=RequestMethod.POST)
+    public Map<String,Object> deployForm(HttpServletRequest request) {
         MultipartHttpServletRequest params=((MultipartHttpServletRequest) request);  
         // 获取文件
-        List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");   
+        List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
+        List<MultipartFile> sigs=   ((MultipartHttpServletRequest) request).getFiles("signatures");
         // 获取参数
         String deploymentName=params.getParameter("deploymentName");
         try {
             StringBuilder sb=new StringBuilder();
             InputStreamReader isr = new InputStreamReader(files.get(0).getInputStream(), StandardCharsets.UTF_8);
             BufferedReader br = new BufferedReader(isr);
-            String lineTxt;
-            while ((lineTxt = br.readLine()) != null) {
-                sb.append(lineTxt);
+            int num;
+            while ((num=br.read())!=-1) {
+                sb.append((char)num);
             }
             isr.close();
             br.close();
             Map<String,Object> requestMap=new HashMap<String,Object>();
             requestMap.put("deploymentName",deploymentName);
             requestMap.put("fileContent",sb.toString());
+            
+            sb.setLength(0);
+            isr = new InputStreamReader(sigs.get(0).getInputStream(), StandardCharsets.UTF_8);
+            br = new BufferedReader(isr);
+            while ((num=br.read())!=-1) {
+                sb.append((char)num);
+            }
+            isr.close();
+            br.close();
+            requestMap.put("signatures",sb.toString());
+
             List<String> list=wfEngine.handleWorkflowRequest(requestMap, wfEngine.deploy);
             String Oid=list.get(0);
             String preRes=list.get(1);
@@ -285,14 +355,30 @@ public class MonitorController implements DataController {
         else throw new RuntimeException("dynamicBind error");
     }
 
+    // @RequestMapping(value="/serviceDynamicBind",method=RequestMethod.POST)
+    // public String serviceDynamicBind(@RequestParam String oid,@RequestParam String taskName,
+    //                                 @RequestParam String serviceName,@RequestParam String httpMethod,@RequestParam String route,
+    //                                 @RequestParam(required = false,defaultValue = "") String input,@RequestParam(required = false,defaultValue = "") String serviceGroup,
+    //                                 @RequestParam(required = false,defaultValue = "") String headers,@RequestParam(required = false,defaultValue = "") String output) {
+    //     String serviceInfo=wfEngine.verifyServiceDynamicBindInput(serviceName, httpMethod, route, input, serviceGroup, headers, output);
+    //     if(wfEngine.handleDynamicBind(oid, taskName, serviceInfo))
+    //         return String.format("success,the info of bind service is:%s,oid is:%s,taskName is:%s", serviceInfo,oid,taskName);
+    //     else return "serviceDynamicBind error";
+    // }
+
     @RequestMapping(value="/serviceDynamicBind",method=RequestMethod.POST)
-    public String serviceDynamicBind(@RequestParam String oid,@RequestParam String taskName,
-                                    @RequestParam String serviceName,@RequestParam String httpMethod,@RequestParam String route,
-                                    @RequestParam(required = false,defaultValue = "") String input,@RequestParam(required = false,defaultValue = "") String serviceGroup,
-                                    @RequestParam(required = false,defaultValue = "") String headers,@RequestParam(required = false,defaultValue = "") String output) {
-        String serviceInfo=wfEngine.verifyServiceDynamicBindInput(serviceName, httpMethod, route, input, serviceGroup, headers, output);
-        if(wfEngine.handleDynamicBind(oid, taskName, serviceInfo))
-            return String.format("success,the info of bind service is:%s,oid is:%s,taskName is:%s", serviceInfo,oid,taskName);
+    public String serviceDynamicBind(@RequestBody String req) throws InterruptedException, ExecutionException {
+        Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
+        if (!wfEngine.bindVerify(req).getLeft()) return "签名验证失败";
+        Map<String,Object> data=jsonTransfer.jsonToMap(String.valueOf(requestMap.get("data")));
+        String serviceInfo=wfEngine.verifyServiceDynamicBindInput(String.valueOf(data.get("serviceName")), 
+                                String.valueOf(data.get("httpMethod")), String.valueOf(data.get("route")), 
+                                data.containsKey("input")?String.valueOf(data.get("input")):"", 
+                                data.containsKey("serviceGroup")?String.valueOf(data.get("serviceGroup")):"", 
+                                data.containsKey("headers")?String.valueOf(data.get("headers")):"", 
+                                data.containsKey("output")?String.valueOf(data.get("output")):"");
+        if(wfEngine.handleDynamicBind(String.valueOf(data.get("oid")), String.valueOf(data.get("taskName")), serviceInfo))
+            return String.format("success,the info of bind service is:%s,oid is:%s,taskName is:%s", serviceInfo,String.valueOf(data.get("oid")), String.valueOf(data.get("taskName")));
         else return "serviceDynamicBind error";
     }
 
@@ -302,6 +388,33 @@ public class MonitorController implements DataController {
             return String.format("success,the oid:%s ,taskName:%s bind to user:%s",oid,taskName,user);
         else return "userDynamicBind error";
     }
+
+    @RequestMapping(value="/register", method=RequestMethod.POST)
+    public String requestMethodName(@RequestParam String name,
+                                    @RequestParam(required = false,defaultValue = "") String oldPrivateKey) throws InvalidKeyException, CryptoException, 
+                                    IllegalAccessException, InstantiationException, ClassNotFoundException, 
+                                    InvalidArgumentException, NoSuchMethodException, InvocationTargetException, 
+                                    NoSuchAlgorithmException, SignatureException, InterruptedException, ExecutionException {
+        Pair<Boolean,String> res=wfEngine.handleRegister(name, oldPrivateKey);
+        if (res.getKey()) {
+            Map<String,Object> response=new HashMap<String,Object>(){{
+                put("name",name);
+                put("privateKey",res.getValue());
+            }};
+            return jsonTransfer.mapToJsonString(response);
+        } else throw new RuntimeException(String.format("注册失败，因为%s", res.getValue()));
+    }
+    
+    @PostMapping(value="/serviceRegister")
+    public String serviceRegister(@RequestBody String req) throws InterruptedException, ExecutionException {
+        //TODO: process POST request
+        Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
+        String provider=String.valueOf(requestMap.get("provider"));
+        String serviceMetaData=String.valueOf(requestMap.get("serviceMetaData"));
+        String signature=String.valueOf(requestMap.get("signature"));
+        return wfEngine.handleServiceRegisty(provider, serviceMetaData, signature);
+    }
+    
 
     @PostMapping(value = "/run")
     public String run(@RequestBody String req, @RequestParam(value = "loadBalance", required = false, defaultValue = "enabled") String loadBalance) throws Exception {
@@ -324,6 +437,12 @@ public class MonitorController implements DataController {
         cacheService.updateCache();
         return "ok";
     }
+
+    @GetMapping(value="/getBlockHeight")
+    public long getBlockHeight() throws ProposalException, InvalidArgumentException {
+        return wfEngine.getBlockHeight();
+    }
+    
 
     // @PostMapping(value = "/monitor")
     // public String rerun(@RequestBody String req, @RequestParam(value = "loadBalance", required = false, defaultValue = "enabled") String loadBalance) throws Exception {

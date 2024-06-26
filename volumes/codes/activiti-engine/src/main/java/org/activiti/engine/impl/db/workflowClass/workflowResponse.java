@@ -3,9 +3,11 @@ package org.activiti.engine.impl.db.workflowClass;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,6 +25,7 @@ public class workflowResponse implements Serializable{
     private String deploymentName;
     private String businessData;
     private String serviceTaskResultJson="{}";
+    private List<String> serviceUrls=new ArrayList<>();
     //用于读写集
     private String readSetJson="";
     private String writeSetJson="";
@@ -44,6 +47,7 @@ public class workflowResponse implements Serializable{
         this.serviceTaskResultJson=cache.getServiceTaskResultJson();
         this.readSetJson=cache.getReadSetJson()==null?"":cache.getReadSetJson();
         this.writeSetJson=cache.getWriteSetJson()==null?"":cache.getWriteSetJson();
+        this.serviceUrls=cache.getServiceUrls();
     }
 
     public workflowResponse() {
@@ -51,6 +55,10 @@ public class workflowResponse implements Serializable{
 
     
     
+
+    public List<String> getServiceUrls() {
+        return serviceUrls;
+    }
 
     public String getReadSetJson() {
         return readSetJson;

@@ -13,7 +13,6 @@ public class DeleteFromRedisCmd implements Command<Void> {
     }
     @Override
     public Void execute(CommandContext commandContext) {
-        commandContext.getDbSqlSession().flushRedis();
         return null;
     }
 }

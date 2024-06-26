@@ -8,11 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.activiti.engine.impl.context.Context;
 import org.activiti.engine.impl.db.redis.useRedis;
 import org.activiti.engine.impl.db.redis.tools.jackJson.jsonTransfer;
 import org.activiti.engine.impl.db.redis.tools.rwSet.extractor.readSetExtractor;
 import org.activiti.engine.impl.db.redis.tools.rwSet.extractor.writeSetExtractor;
 import org.activiti.engine.impl.db.workflowClass.*;
+import org.activiti.engine.impl.interceptor.CommandContext;
 import org.activiti.engine.impl.persistence.entity.DeploymentEntityImpl;
 import org.activiti.engine.impl.persistence.entity.Entity;
 import org.activiti.engine.impl.persistence.entity.TaskEntityImpl;
@@ -33,17 +35,40 @@ public class cachedFlushObjects {
     private static volatile ConcurrentHashMap<String,cachedResponse> cachedResponse=new ConcurrentHashMap<>(20000);
     private static Logger logger=LoggerFactory.getLogger(cachedFlushObjects.class);
 
-    public static String flushCachedObjectsToRedis(String[] Oids) {
+
+    public static String flushCachedObjectsToRedis(CommandContext commandContext,String[] Oids) {
         List<Map<Class<? extends Entity>, Map<String, Entity>>> insertedList=new LinkedList<>();
         List<Map<Class<? extends Entity>, Map<String, Entity>>> deletedList=new LinkedList<>();
         List<Entity> updatedObjects=new ArrayList<>();
         for (String Oid:Oids) {
-            //加入
-            //需要价格判定，不判定，Oid不存在会加入空的hashMap
-            insertedList.add(cachedInsert.remove(Oid));
-            List<Entity> uList=cachedUpdate.remove(Oid);
-            updatedObjects.addAll(uList);
-            deletedList.add(cachedDelete.remove(Oid));
+            if (Oid.contains("@")) {
+                Map<Class<? extends Entity>, Map<String, Entity>> inserts=cachedInsert.remove(Oid);
+                Map<Class<? extends Entity>, Map<String, Entity>> deletes=cachedDelete.remove(Oid);
+                List<Entity> updates=cachedUpdate.remove(Oid);
+                for (Map<String,Entity> entities:inserts.values()) {
+                    for (Entity entity:entities.values()) {
+                        commandContext.getDbSqlSession().flushInsert(entity);
+                    }
+                }
+                for (Map<String,Entity> entities:deletes.values()) {
+                    for (Entity entity:entities.values()) {
+                        commandContext.getDbSqlSession().flushDelete(entity);
+                    }
+                }
+                for (Entity entity:updates) {
+                    commandContext.getDbSqlSession().flushUpdate(entity);
+                }
+                insertedList.add(inserts);
+                updatedObjects.addAll(updates);
+                deletedList.add(deletes);
+            } else {
+                //加入
+                //需要价格判定，不判定，Oid不存在会加入空的hashMap
+                insertedList.add(cachedInsert.remove(Oid));
+                List<Entity> uList=cachedUpdate.remove(Oid);
+                updatedObjects.addAll(uList);
+                deletedList.add(cachedDelete.remove(Oid));
+            }
         }
         useRedis.insertListToRedis(insertedList);
         //System.out.println("1");
@@ -51,6 +76,7 @@ public class cachedFlushObjects {
         //System.out.println("2");
         useRedis.deleteListToRedis(deletedList);
         //System.out.println("3");
+        commandContext.getDbSqlSession().justFlush();
         insertedList.clear();
         updatedObjects.clear();
         deletedList.clear();
@@ -107,6 +133,7 @@ public class cachedFlushObjects {
     Map<Class<? extends Entity>, Map<String, Entity>> deletedObjects,String Oid,String businessData) {
         //处理数据获得cachedResponse结构体
         cachedResponse response=new cachedResponse();
+        response.setServiceUrls(Context.getCommandContext().getServiceUrls());
         response.setOid(Oid);
         response.setBusinessData(businessData);
         response.setWriteSetJson(writeSetExtractor.extract(insertedObjects, updatedObjects, deletedObjects));

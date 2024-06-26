@@ -1,11 +1,13 @@
 package springcloud.springcloudgateway.workflow.thread.consumer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -44,22 +46,51 @@ public class flushConsumer implements Consumer<TransactionEvent>{
 
 
         //测试用
-        Iterator<workflowResponse> workflowResponses= preDatas.values().iterator();
-        long flushStartTime=System.currentTimeMillis();
-        while (workflowResponses.hasNext()) {
-            workflowResponses.next().setFlushStartTime(flushStartTime);
-        }
+        // Iterator<workflowResponse> workflowResponses= preDatas.values().iterator();
+        // Map<String,StringBuilder> serviceUrlToOids=new HashMap<>();
+        // long flushStartTime=System.currentTimeMillis();
+        // while (workflowResponses.hasNext()) {
+        //     workflowResponse workflowResponse=workflowResponses.next();
+        //     workflowResponse.setFlushStartTime(flushStartTime);
+        //     List<String> SeviceUrls=workflowResponse.getServiceUrls();
+        //     for (String serviceUrl:SeviceUrls) {
+        //         serviceUrlToOids.computeIfAbsent(serviceUrl, k->new StringBuilder())
+        //                                                 .append(workflowResponse.getOid())
+        //                                                 .append('|');
+        //     }
+        // }
         
         try {
             Map<String,Object> data=new HashMap<String,Object>(){{
                 put("oidsString", oids);
                 put("vaild",vaild);
             }};
-            List<Future<SimpleHttpResponse>> futures=new LinkedList<>();
+            List<Future<SimpleHttpResponse>> futures=new ArrayList<>();
             String jsonString=jsonTransfer.mapToJsonString(data);
             for (String ip:peersIp) {
                 futures.add(httpUtil.doPost("http://"+ip+":8888/wfEngine/flush", jsonString));
             }
+            //List<Future<SimpleHttpResponse>> releaseFutures=new ArrayList<>();
+            // for(Entry<String,StringBuilder> entry:serviceUrlToOids.entrySet()) {
+            //     String url=entry.getKey();
+            //     String oids=entry.getValue().deleteCharAt(entry.getValue().length()-1).toString();
+            //     Map<String,Object> jsonMap=new HashMap<String,Object>(){{
+            //         put("oids",oids);
+            //     }};
+            //     Map<String,Object> postMap=new HashMap<>();
+            //     postMap.put("s-consumerName","");
+            //     postMap.put("s-serviceName",url);
+            //     postMap.put("headers","{}");
+            //     postMap.put("s-url","/unLock");
+            //     postMap.put("s-method","POST");
+            //     postMap.put("body",jsonTransfer.mapToJsonString(jsonMap));
+            //     postMap.put("s-group","WORKFLOW");
+            //     releaseFutures.add(httpUtil.doPost("http://127.0.0.1:8999/grafana/run?loadBalance=enabled", jsonTransfer.mapToJsonString(postMap)));
+            // }
+            // for (Future<SimpleHttpResponse> f:releaseFutures) {
+            //     String res=f.get().getBodyText();
+            //     logger.info(f.get().getHeaders().toString()+","+"releaseLock "+res);
+            // }
             boolean success=true;
             int count=0;
             for (Future<SimpleHttpResponse> future:futures) {

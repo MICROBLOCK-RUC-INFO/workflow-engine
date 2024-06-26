@@ -318,5 +318,7 @@ public class workflowFabric {
         this.workflowchannel=channel;
     }
 
-
+    public long getBlockHeight() throws ProposalException, InvalidArgumentException {
+        return workflowchannel.queryBlockchainInfo().getHeight();
+    }
 }

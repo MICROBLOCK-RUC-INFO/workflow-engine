@@ -12,10 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+/**
+ * userTask
+ */
 public class tableOperator {
     private static ConcurrentHashMap<String,ConcurrentHashMap<String,String>> allocationTable=new ConcurrentHashMap<String,ConcurrentHashMap<String,String>>();
     private static ConcurrentHashMap<String,timeRecord> lastUsedTime=new ConcurrentHashMap<String,timeRecord>();
-    private final static StringRedisTemplate redisClient=new redisUtil().getTableRedisClient();
+    private final static StringRedisTemplate redisClient=redisUtil.getTableRedisClient();
     private final static Logger logger=LoggerFactory.getLogger(tableOperator.class);
     static class timeRecord {
         long lastUseTime;
@@ -107,7 +110,7 @@ public class tableOperator {
             redisClient.opsForHash().put(oid, key, value);
             if (allocationTable.containsKey(oid)) {
                 /*更新redis后，再删除缓存中的脏数据，但是有一个问题，如果在还没有删除脏数据的时候,
-                 *如果这时候有人读取数据就会出现脏读，使用缓存双删也无法解决这个问题
+                 *如果这时候有人读取数据就会出现脏读
                  */
                 allocationTable.remove(oid);
                 lastUsedTime.remove(oid);

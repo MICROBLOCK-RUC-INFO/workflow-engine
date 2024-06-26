@@ -219,9 +219,9 @@ LabelEditingProvider.prototype.getEditingBBox = function(element) {
       externalStyle = this._textRenderer.getExternalStyle();
 
   // take zoom into account
-  var externalFontSize = externalStyle.fontSize * zoom,
+  var externalFontSize = externalStyle.fontSize * zoom*2,
       externalLineHeight = externalStyle.lineHeight,
-      defaultFontSize = defaultStyle.fontSize * zoom,
+      defaultFontSize = defaultStyle.fontSize * zoom*2,
       defaultLineHeight = defaultStyle.lineHeight;
 
   var style = {

@@ -1,5 +1,6 @@
 package com.wq.wfEngine.tool;
 
+import java.util.List;
 import java.util.Map;
 
 import org.activiti.engine.impl.db.workflowClass.serviceTaskRes;
@@ -61,6 +62,16 @@ public class jsonTransfer {
             return jsonStr;
         } catch (Exception e) {
             logger.error(String.format("jsonTransfer执行失败,因为", e.getMessage()));
+            return null;
+        }
+    }
+
+    public static List<Map<String, Object>> jsonToSigs(String jsonStr) {
+        try {
+            List<Map<String,Object>> res=objectMapper.readValue(jsonStr, new TypeReference<List<Map<String,Object>>>(){});
+            return res;
+        } catch (Exception e) {
+            //e.printStackTrace();
             return null;
         }
     }

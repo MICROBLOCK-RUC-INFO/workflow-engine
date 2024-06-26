@@ -70,6 +70,11 @@ public class cachedData {
     private static final Logger logger=LoggerFactory.getLogger(cachedData.class);
 
 
+    /**
+     * 好像不需要了
+     * @param operationKey
+     * @return
+     */
     public static boolean lockOperation(String operationKey) {
         Long currentTimeStamp=System.currentTimeMillis();
         Long preTimeStamp=operationKeyLock.put(operationKey, currentTimeStamp);
