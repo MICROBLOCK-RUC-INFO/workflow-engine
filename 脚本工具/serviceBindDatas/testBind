@@ -1,0 +1,1 @@
+{"oid": "simpleSample.bpmn@f5c7d603-96f0-45a5-ad76-b12831644334", "taskName": "task3", "serviceName": "testService", "httpMethod": "POST", "route": "/test", "input": "{\"hhhlast\":\"sun.Address\"}"}

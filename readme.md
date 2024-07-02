@@ -225,6 +225,7 @@ curl --request POST \
 * register this service
 
 ```shell
+#直接用脚本工具中的python来完成注册操作，可以参考里面的例子
 curl --location 'localhost:8999/grafana/serviceRegister' \
 --header 'Content-Type: application/json' \
 --data '{
@@ -290,6 +291,7 @@ npm run dev
 * deploy the bpmn diagram
 
 ```shell
+可以用脚本工具中的python文件完成部署操作，使用python tool.py sign mutil生成多个组织对文件的签名，然后在用python tool.py bpmn deploy执行部署
 curl --location '127.0.0.1:8999/grafana/wfRequest/deploy' \
 --form 'file=@"{filePath}"' \
 --form 'deploymentName="{部署名}"' \
@@ -407,22 +409,13 @@ curl --request POST \
 * bind the service to the serviceTask
 
 ```shell
+可以使用脚本工具里的python文件来完成，具体见里面的例子
 curl --location 'localhost:8999/grafana/serviceDynamicBind' \
 --header 'Content-Type: application/json' \
 --data-raw '{
    "data":"{\"oid\":\"流程实例标识\",\"taskName\":\"服务任务名\",\"serviceName\":\"服务名\",\"httpMethod\":\"服务分组\",\"route\":\"路径\",\"input\":\"{input}\",\"serviceGroup\":\"{serviceGroup}\",\"headers\":\"{需要添加的头部}\",\"output\":\"{output}\"}",
    "sigs":"签名列表"
 }'
-curl --request POST \
-  --url http://{localhost IP}:{port of workflow engine service}/grafana/serviceDynamicBind \
-  --header 'content-type: application/x-www-form-urlencoded' \
-  --data oid={oid of bmpn instance} \
-  --data taskName={task} \
-  --data serviceName={serviceName} \
-  --data httpMethod={httpMethod} \
-  --data route={route} \
-  --data '{input}' \
-  --data serviceGroup={serviceGroup}
 # example
 curl --location 'localhost:8999/grafana/serviceDynamicBind' \
 --header 'Content-Type: application/json' \
@@ -546,3 +539,6 @@ curl --request GET \
 | flushEndTime         | The time when the state database has completed its changes   |
 | simulationEndTime    | The time at which the simulation has been completed.         |
 
+## 11.脚本工具
+
+2.4，3，4里的服务注册，6，7，8，9都已经集成在了脚本工具里的python里，可以直接使用，具体可以看里面的--help都写了
