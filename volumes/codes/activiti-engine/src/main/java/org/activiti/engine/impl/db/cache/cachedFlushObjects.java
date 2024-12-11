@@ -41,7 +41,7 @@ public class cachedFlushObjects {
         List<Map<Class<? extends Entity>, Map<String, Entity>>> deletedList=new LinkedList<>();
         List<Entity> updatedObjects=new ArrayList<>();
         for (String Oid:Oids) {
-            if (Oid.contains("@")) {
+            if (Oid.endsWith(".bpmn")) {
                 Map<Class<? extends Entity>, Map<String, Entity>> inserts=cachedInsert.remove(Oid);
                 Map<Class<? extends Entity>, Map<String, Entity>> deletes=cachedDelete.remove(Oid);
                 List<Entity> updates=cachedUpdate.remove(Oid);
