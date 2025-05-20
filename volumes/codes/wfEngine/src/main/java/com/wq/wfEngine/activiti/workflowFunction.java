@@ -35,7 +35,9 @@ import com.wq.wfEngine.config.evilNodeConfig;
 //import com.wq.wfEngine.taskService.locks.unReleaseUrls;
 import com.wq.wfEngine.tool.jsonTransfer;
 
-
+/**
+ * @apiNote 主要的功能都封装在这个类里
+ */
 public class workflowFunction {
     public static ProcessEngine processEngine = ActivitiUtils.processEngine;
     public static RepositoryService repositoryService = ActivitiUtils.repositoryService;
@@ -51,14 +53,18 @@ public class workflowFunction {
         return deployments;
     }
 
-    //这是因为mybatis数据库连接池隔一段时间会失效，并且连接池不会去做检验，当时改了配置文件仍然没用，就先用了这个方法
+    /**
+     * @apiNote 这是因为mybatis数据库连接池隔一段时间会失效，并且连接池不会去做检验，当时改了配置文件仍然没用，就先用了这个方法
+     * 基本不影响性能，因为间隔时间很长
+     */
     public static void loop() {
         repositoryService.createProcessDefinitionQuery().list();
         runtimeService.createProcessInstanceQuery().list();
     }
 
-
-    //获取bpmn的矢量图
+    /**
+     * @apiNote 获取bpmn的矢量图
+     */
     public static String getSvgContent(String deploymentName) throws IOException {
         BpmnModel model=cachedData.getBpmnModelByName(deploymentName);
         if (model!=null&&model.getLocationMap().size()>0) {
@@ -73,6 +79,9 @@ public class workflowFunction {
         }
     }
 
+    /**
+     * @apiNote 根据DeploymentName删除已部署的BPMN
+     */
     public static void deleteDeploymentByName(String deploymentName) {
         List<Deployment> deploymentList = repositoryService.createDeploymentQuery().deploymentName(deploymentName).list();
         if (deploymentList.size()==0) {
@@ -85,7 +94,9 @@ public class workflowFunction {
         cachedData.cleanDeploymentByName(deploymentName);
     }
 
-    //过滤掉deployments中包含用户任务的，当时是为了智慧城市
+    /**
+     * @apiNote 过滤掉deployments中包含用户任务的，当时是为了智慧城市
+     */
     public static List<String> filterUserTask(List<Deployment> deployments) {
         List<String> deploymentWithNoUserTask=new ArrayList<>();
         for (Deployment deployment:deployments) {
@@ -96,7 +107,9 @@ public class workflowFunction {
         return deploymentWithNoUserTask;
     }
 
-    //过滤非dbapi
+    /**
+     * @apiNote 过滤非DBAPI，也是为了智慧城市，应该是通过服务任务的信息来过滤的
+     */
     public static List<String> filterNoDBAPI(List<Deployment> deployments) {
         List<String> deploymentDBAPI=new ArrayList<>();
         for (Deployment deployment:deployments) {
@@ -107,8 +120,9 @@ public class workflowFunction {
         return deploymentDBAPI;
     }
 
-
-    //智慧城市，拿到serviceTaskInfo
+    /**
+     * @apiNote 智慧城市，拿到serviceTaskInfo
+     */
     public static Map<String,Object> getServiceTaskInfo(List<String> deploymentNames) {
         Map<String,Object> serviceTaskInfos=new HashMap<>();
         for (String deploymentName:deploymentNames) {
@@ -117,7 +131,9 @@ public class workflowFunction {
         return serviceTaskInfos;
     }
 
-
+    /**
+     * @apiNote 这个应该是根据Deployment获得BPMN文件内容
+     */
     public static String getBytesByDeployment(Deployment deployment) throws IOException {
         InputStream in=repositoryService.getResourceAsStream(deployment.getId(), deployment.getName());
         byte[] bytes=new byte[in.available()];
@@ -126,6 +142,9 @@ public class workflowFunction {
         return new String(bytes);
     }
 
+    /**
+     * @apiNote 根据部署名来获得BPMN文件内容
+     */
     public static String getBytesByDeploymentName(String deploymentName) throws IOException {
         Deployment deployment=repositoryService.createDeploymentQuery().deploymentName(deploymentName).singleResult();
         if (deployment==null) throw new RuntimeException("there is no deployment with name is "+deploymentName);
@@ -136,23 +155,29 @@ public class workflowFunction {
         return new String(bytes);
     }
 
+    /**
+     * @apiNote 部署BPMN
+     */
     public static String deploy(String deploymentName,String fileContent) {
         List<Deployment> deploymentList = repositoryService.createDeploymentQuery().deploymentName(deploymentName).list();
 
+        //先把重名的已部署BPMN删除，如果有的话
         for (Deployment d : deploymentList) {
             repositoryService.deleteDeployment(d.getId(), true);// 默认是false true就是级联删除
         }
-
+        //清理对应的缓存
         cachedData.cleanDeploymentByName(deploymentName);
 
+        //部署
         Deployment deployment = repositoryService.createDeployment()// 创建Deployment对象
         .addString(deploymentName, fileContent)
         .name(deploymentName)
         .deploy();//对于deployment,Name就是他的Oid
 
+        //获得模拟执行返回结果
         cachedResponse response= runtimeService.getWorkflowResponse(deploymentName);
 
-        //存至缓存，等待flush时更新，对应实例的状态
+        //存至缓存，等待flush时更新状态
         cachedData.storeWorkflowResponse(response, deploymentName);
 
         return response.getEncodeString();
@@ -161,7 +186,7 @@ public class workflowFunction {
 
 
     /**
-     * 
+     * @apiNote 实例化
      * @param deploymentName 要实例化的bpmn图对应的Deployment的名字
      * @param Oid 实例的唯一oid
      * @param businessData 这个是传入的业务数据
@@ -170,6 +195,7 @@ public class workflowFunction {
      * @return 返回的是模拟执行后的结果序列化后用base64加密后的字符串
      */
     public static String instance(String deploymentName,String Oid,String businessData,String staticAllocationTable,String serviceTaskResultJson) {
+       //如果是设置的恶意节点，则随机返回错误执行结果
         if (evilNodeConfig.isEvil()) {
             return randomGenerator.getWorkflowResponseString();
         }
@@ -178,6 +204,7 @@ public class workflowFunction {
             table=jsonTransfer.jsonToMap(staticAllocationTable);
             if (table==null) throw new RuntimeException("jsonTransfer error,jsonStr:"+staticAllocationTable);
         }
+        //静态分配表
         workflowContext.getUserTaskBindHandler().staticAllocate(Oid,table);
         Map<String,Object> variables=new HashMap<String,Object>() {
             {
@@ -194,13 +221,13 @@ public class workflowFunction {
         String mainProcessId=cachedData.getMainProcessId(deploymentName);
         //实例化
         runtimeService.startProcessInstanceById(mainProcessId,variables);
-        //拿到实例化的workflowResponse
+        //获得模拟执行结果
         cachedResponse response=runtimeService.getWorkflowResponse(Oid);
         
 
         //存至缓存，等待flush时更新，对应实例的状态
         cachedData.storeWorkflowResponse(response, Oid);
-        //如果是预先执行的设置serviceTaskResultJson
+        //如果是本节点执行(会调用服务任务的服务)，设置serviceTaskResultJson
         response.setServiceTaskResultJson(jsonTransfer.serviceTaskResToJsonString(cachedServiceTaskResult.removeServiceTaskRes(Oid)));
         //返回给请求方的数据
         return response.getEncodeString(); 
@@ -228,11 +255,15 @@ public class workflowFunction {
         // }
     }
 
-
+    /**
+     * @apiNote  完成用户任务
+     */
     public static String complete(String Oid,String taskName,String processData,String businessData,String user,String serviceTaskResultJson) {
+        //如果是设置的恶意节点，则随机返回错误执行结果
         if (evilNodeConfig.isEvil()) {
             return randomGenerator.getWorkflowResponseString();
         }
+        //从缓存拿到taskId
         String taskId=cachedData.getTaskId(Oid, taskName);
         if (taskId==null) {
             throw new RuntimeException("no task named "+taskName+" with oid "+Oid);
@@ -241,22 +272,23 @@ public class workflowFunction {
         //传入的变量中放入Oid唯一标识
         variables.put("Oid",Oid);
         variables.put("user",user);
-        //如果有businessData则加入variables,因为business传入的是json数据的字符串格式
-        //todo:businessData持久化
+        //如果有businessData则加入variables
         if (businessData.length()>=2) {
             variables.put("businessData",businessData);
         }
+        //如果不为空则将服务任务执行结果放入，有服务任务执行结果则认为服务任务只需要校验，不需要真实的调用服务
         if (serviceTaskResultJson!=null) {
             variables.put("serviceTaskResultJson",serviceTaskResultJson);
         }
-        //先完成complete
+        //完成用户任务
         taskService.complete(taskId, variables,false);
 
+        //获得模拟执行结果
         cachedResponse response=runtimeService.getWorkflowResponse(Oid);
 
-        //存至缓存，等待flush时更新，对应实例的状态
+        //存至缓存，等待flush时更新状态
         cachedData.storeWorkflowResponse(response, Oid);
-        //如果是预先执行的设置serviceTaskResultJson
+        //设置serviceTaskResultJson
         response.setServiceTaskResultJson(jsonTransfer.serviceTaskResToJsonString(cachedServiceTaskResult.removeServiceTaskRes(Oid)));
 
         //response.setServiceUrls(unReleaseUrls.getUrls());
@@ -283,7 +315,7 @@ public class workflowFunction {
     }
 
     /**
-     * @apiNote 根据读写集来完成状态更新，这里的读写集用的是json形式，protoBuf不够灵活，如果后期需要可以进行更改
+     * @apiNote 主要是服务绑定注册的flush逻辑。根据读写集来完成状态更新，这里的读写集用的是json形式，protoBuf不够灵活，如果后期需要可以进行更改
      * @param value 读写集的json字符串,map结构{opType="操作类型",剩下的数据根据opType不一致}，底层有判断逻辑
      */
     public static boolean commonFlush(operation o) {
@@ -291,7 +323,7 @@ public class workflowFunction {
     }
 
     /**
-     * 
+     * @apiNote 主要是服务绑定注册的模拟执行逻辑
      * @param o 模拟执行需要的参数封装的类，deploy,instance,complete还未集成进来
      * @return 返回给用户的数据，一般为读写集
      */
@@ -301,10 +333,11 @@ public class workflowFunction {
 
 
     /**
-     * @apiNote 这个没有做需要绑定的task是否已经执行完成，可以通过BpmnModel的序列流和信息流的广度遍历来做，但是或许可以有更好的方法
+     * 
+     * @apiNote 确认是用户任务还是服务任务。这个没有做需要绑定的task是否已经执行完成，可以通过BpmnModel的序列流和信息流的广度遍历来做，但是或许可以有更好的方法
      * @param oid
      * @param taskName
-     * @return pair<bool,oType> 有效则返回<true,oType>,无效返回<false,null>
+     * @return pair<bool,oType> 有该任务则返回<true,任务类型>,无则返回<false,null>
      */
     public static Pair<Boolean,oType> isUserOrServiceTask(String oid,String taskName) {
         BpmnModel model=cachedData.getBpmnModelByName(oid.split("@")[0]);

@@ -4,6 +4,9 @@ import java.util.Map;
 
 import org.activiti.engine.impl.db.redis.tools.operation.registry.registerOperator;
 
+/**
+ * @apiNote 组织(Org)注册,虽然日志里写的是用户
+ */
 public class registryHandler implements handler{
 
     @Override

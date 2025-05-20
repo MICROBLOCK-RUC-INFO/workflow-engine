@@ -5,7 +5,9 @@ import org.activiti.engine.impl.db.workflowClass.rwSetClass.simpleTask;
 import org.activiti.engine.impl.persistence.entity.Entity;
 import org.activiti.engine.impl.persistence.entity.TaskEntityImpl;
 
-//工厂模式
+/**
+ * @apiNote 这个应该没用了，忘记干嘛的了
+ */
 public class entityGenerator {
     private Entity generator(simpleEntity simpleEntity) {
         return null;

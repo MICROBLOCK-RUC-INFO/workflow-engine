@@ -45,14 +45,17 @@ import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.apache.hc.core5.util.Timeout;
 
 
-
-
-//封装的httpclient连接池初始化，get请求与post请求
+/**
+ * 2025/4/30
+ * 封装的http调用方法
+ */
 public class httpUtil {
     private static CloseableHttpAsyncClient client = null;
     private static CloseableHttpClient syncClient=null;
     static {
-
+        /**
+         * client端初始化
+         */
         PoolingHttpClientConnectionManager syncPaccm=new PoolingHttpClientConnectionManager();
         syncPaccm.setMaxTotal(200);
         syncPaccm.setDefaultMaxPerRoute(10);
@@ -65,6 +68,9 @@ public class httpUtil {
         client = HttpAsyncClients.custom().setIOReactorConfig(ioReactorConfig).setConnectionManager(paccm).setKeepAliveStrategy(new DefaultConnectionKeepAliveStrategy()).build();
     }
 
+    /**
+     * @apiNote 将fileContent上传到IPFS，返回Hash值。文件名是ChannelName+"-"+UUID+".txt"
+     */
     public static String uploadFile(String fileContent,String ChannelName) {
         try {
             new BasicClassicHttpRequest("POST",new HttpHost("127.0.0.1", 5001),"/api/v0/add?quieter=true");
@@ -88,6 +94,9 @@ public class httpUtil {
     }
 
 
+    /**
+     * @apiNote 通过hash值从IPFS中获得数据
+     */
     public static String getHashContent(String hash) {
         try {
             ClassicHttpRequest request=new BasicClassicHttpRequest("POST", new HttpHost("127.0.0.1", 5001),
@@ -103,6 +112,9 @@ public class httpUtil {
         }
     }
 
+    /**
+     * @apiNote 根据URL列表依次执行GET
+     */
     public static List<Future<SimpleHttpResponse>> mutilGet(List<String> urls) throws InterruptedException, ExecutionException {
         List<Future<SimpleHttpResponse>> lists=new ArrayList<Future<SimpleHttpResponse>>();
         for (String url:urls) {
@@ -111,7 +123,9 @@ public class httpUtil {
         return lists;
     }
 
-    // get方法
+    /**
+     * @apiNote GET
+     */
     public static Future<SimpleHttpResponse> doGet(String url)
             throws InterruptedException, ExecutionException {
         client.start();
@@ -136,6 +150,9 @@ public class httpUtil {
         return future;
     }
 
+    /**
+     *@apiNote 对每一个URL都执行数据为json_data执行POST
+     */
     public static List<Future<SimpleHttpResponse>> multiPost(Iterator<String> urls,String json_data) throws InterruptedException, ExecutionException {
         List<Future<SimpleHttpResponse>> futures=new ArrayList<Future<SimpleHttpResponse>>();
         while (urls.hasNext()) {
@@ -144,7 +161,9 @@ public class httpUtil {
         return futures;
     }
 
-    // post方法
+    /**
+     * @apiNote POST
+     */
     public static Future<SimpleHttpResponse> doPost(String url,String json_data)
             throws InterruptedException, ExecutionException {
 
@@ -172,6 +191,10 @@ public class httpUtil {
         return future;
     }
 
+    /**
+     * @apiNote 检查对应HOST和PORT能否连接，目前用于服务注册到Nacos时检查Nacos端口
+     * 能连接返回true,否则返回false, timeout是超时时间
+     */
     public static boolean isPortOpen(String host, int port, int timeout) {
         try {
             Socket socket = new Socket();

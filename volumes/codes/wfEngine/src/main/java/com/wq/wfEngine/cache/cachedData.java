@@ -71,7 +71,7 @@ public class cachedData {
 
 
     /**
-     * 好像不需要了
+     * @apiNote 这应该是服务任务绑定加锁
      * @param operationKey
      * @return
      */
@@ -93,6 +93,9 @@ public class cachedData {
         return false;
     }
 
+    /**
+     * @apiNote 根据Oid查询当前要完成的任务名
+     */
     public static Map<String,Object> getCurrentTaskByOid(String oid) {
         if (!currentTaskNameId.containsKey(oid)) return new HashMap<>();
         Map<String,String> status=currentTaskNameId.get(oid);
@@ -111,6 +114,9 @@ public class cachedData {
         return currentTasks; 
     }
 
+    /**
+     * @apiNote 根据已部署BPMN的deploymentName查询当前需要完成的任务名
+     */
     public static List<Map<String,Object>> getCurrentTaskByDeploymentName(String deploymentName) {
         Iterator<String> oids= currentTaskNameId.keySet().iterator();
         List<Map<String,Object>> list=new ArrayList<>();
@@ -121,10 +127,16 @@ public class cachedData {
         return list;
     }
 
+    /**
+     * @apiNote 释放锁，对应78行的加锁
+     */
     public static void releaseOperationLock(String operationKey) {
         operationKeyLock.remove(operationKey);
     }
 
+    /**
+     * @apiNote 这个忘记是干啥的的了，现在应该没用了
+     */
     public static void testAllocationTable() {
         for (String key:cachedAllocationTable.keySet()) {
             System.out.println(key+"::::");
@@ -134,11 +146,16 @@ public class cachedData {
         }
     }
 
+    /**
+     * @apiNote 根据oid查询当前需要完成的task名和taskId
+     */
     public static Map<String,String> getNowTasks(String oid) {
         return currentTaskNameId.get(oid);
     }
 
-    //卢老师组的需求
+   /**
+    * @apiNote 智慧城市需求，应该是根据DeploymentName查询当前的所有实例的状态(就是待完成的用户任务)
+    */
     private static List<Map<String,Object>> getWorkflowStatusByDeploymentName(String deploymentName) {
         Iterator<Entry<String, ConcurrentHashMap<String, String>>> iterator= currentTaskNameId.entrySet().iterator();
         List<Map<String,Object>> res=new ArrayList<>();
@@ -190,6 +207,9 @@ public class cachedData {
         return res;
     }
 
+    /**
+     * @apiNote 这应该也是智慧城市用的，根据oid获得待完成的用户任务和服务任务需要的输入
+     */
     public static Map<String, Object> getWorkflowStatusByOid(String oid) {
         ConcurrentHashMap<String,String> temp= currentTaskNameId.get(oid);
         if (temp==null) {
@@ -538,16 +558,25 @@ public class cachedData {
         return serviceInfo;
     }
     
-
+    /**
+     * @apiNote 这个好像没用了，当初应该是用来测试的，因为最开始还没学会远程调试
+     */
     public static String testErrorBoundaryEvent() {
         return hasErrorBoundaryEventMap.toString();
     }
 
+    /**
+     * @apiNote 有ErrorBoundaryEvent返回true,反之返回false
+     */
     public static boolean hasErrorBoundaryEvent(String activityId,String deploymentName) {
         return hasErrorBoundaryEventMap.get(deploymentName).contains(activityId);
     }
 
+    /**
+     * @apiNote 根据deploymentName查询对应BpmnModel
+     */
     public static BpmnModel getBpmnModelByName(String deploymentName) {
+        //先缓存，如果有缓存，不会查询数据库
         cacheModelAndDeployment(deploymentName);
 
         return cachedBpmnModel.get(deploymentName);
@@ -555,15 +584,20 @@ public class cachedData {
 
 
     public static Deployment getDeploymentByName(String deploymentName) {
+        //先缓存，如果有缓存，不会查询数据库
         cacheModelAndDeployment(deploymentName);
 
         return cachedDeployment.get(deploymentName);
     }
 
-    //这个好像可以跟某些模块合并复用，暂时还未改 2023-6-1
+    /**
+     * @apiNote 缓存里没有则查询数据库，然后存入缓存
+     */
     private static void cacheModelAndDeployment(String deploymentName) {
         if (!cachedDeployment.containsKey(deploymentName)||!cachedBpmnModel.containsKey(deploymentName)) {
+            //缓存中没有
             Deployment deployment = workflowFunction.repositoryService.createDeploymentQuery().deploymentName(deploymentName).singleResult();
+            //判断是否存在对应deployment
             if (deployment==null) {
                 throw new RuntimeException("there is no deployment named "+deploymentName);
             }
@@ -571,8 +605,10 @@ public class cachedData {
             List<ProcessDefinition> processDefinitionList = workflowFunction.repositoryService.createProcessDefinitionQuery()
                                                                             .deploymentId(deploymentId).list();
             BpmnModel bpmnModel = workflowFunction.repositoryService.getBpmnModel(processDefinitionList.get(0).getId());
+            //更新缓存
             cachedDeployment.put(deploymentName,deployment);
             cachedBpmnModel.put(deploymentName,bpmnModel);
+            //初始化ErrorBoundaryEventMap,用于判断对应BPMN图是否有ErrorBoundaryEvent
             if (!hasErrorBoundaryEventMap.containsKey(deploymentName)) {
                 Set<String> sets=initHasErrorBoundaryEventMap(bpmnModel);
                 hasErrorBoundaryEventMap.put(deploymentName, sets);
@@ -580,7 +616,9 @@ public class cachedData {
         }
     }
 
-
+    /**
+     * @apiNote 就是根据这个判断对应BPMN图是否有ErrorBoundaryEvent
+     */
     private static Set<String> initHasErrorBoundaryEventMap(BpmnModel bpmnModel) {
         Set<String> sets=new HashSet<>();
         List<Process> processes=bpmnModel.getProcesses();
@@ -612,6 +650,9 @@ public class cachedData {
         return sets;
     }
 
+    /**
+     * @apiNote 这应该是用于删除BPMN时，清除缓存
+     */
     public static void cleanDeploymentByName(String deploymentName) {
         processKeyToId.remove(deploymentName);
         deploymentNameToMainProcessDefinitionId.remove(deploymentName);
@@ -620,6 +661,9 @@ public class cachedData {
         hasErrorBoundaryEventMap.remove(deploymentName);
     }
 
+    /**
+     * @apiNote 这个没用了
+     */
     public static ConcurrentHashMap<String,String> getAllocationTable(String oid) {
         return cachedAllocationTable.get(oid);
     }
@@ -636,14 +680,19 @@ public class cachedData {
         return processKeyToId.get(deploymentName).get(processKey);
     }
 
-
+    /**
+     * @apiNote 判断实例是否已完成
+     */
     private static boolean isEnd(int fromTaskSize,int toTaskSize,String Oid) {
         int currentSize=currentTaskNameId.get(Oid)==null?0:currentTaskNameId.get(Oid).size();
+        //当待完成的用户任务数-将完成用户任务数+新创建的待完成用户任务数=0，则认为实例已完成
         if ((currentSize-fromTaskSize+toTaskSize)==0) return true;
         else return false; 
     }
 
-    //卢服务组合-查询服务组合返回信息
+    /**
+     * @apiNote 智慧城市，查询服务组合返回信息
+     */
     public static Map<String, Object> getServiceTaskInfo(String deploymentName) {
 
         cacheModelAndDeployment(deploymentName);
@@ -657,7 +706,9 @@ public class cachedData {
         return serviceInfo;
     }
 
-    //卢服务组合-过滤有用户任务的bpmn过滤器
+    /**
+     * @apiNote 智慧城市。过滤有用户任务的bpmn过滤器
+     */
     public static boolean haveUserTask(String deploymentName) {
 
         cacheModelAndDeployment(deploymentName);
@@ -673,6 +724,9 @@ public class cachedData {
         return false;
     }
 
+    /**
+     * @apiNote 智慧城市，判断是否包含DBAPI的服务任务(为了筛选BPMN图)
+     */
     public static boolean isDBAPI(String deploymentName) {
 
         cacheModelAndDeployment(deploymentName);
@@ -731,10 +785,7 @@ public class cachedData {
 
     @Deprecated
     /**
-     * @apiNote 用来验证静态分配表的
-     * @param staticAllocationTable 静态分配表
-     * @param deploymentName bpmn图deploy时的名字
-     * @return 如果分配表中包含bpmn中没有的userTask返回false
+     * @apiNote 这个没用了
      */
     public static boolean verifyStaticAllocation(String staticAllocationTable,String deploymentName) {
         try {
@@ -777,7 +828,9 @@ public class cachedData {
         }
     }
     @Deprecated
-    //instance的时候调用的静态分配，给每一个任务分配一个拥有者(执行者)
+    /**
+     * @apiNote 这个没用了
+     */
     public static void staticAllocate(String staticAllocationTable,String deploymentName,String oid) {
         try {
             //解析staticAllocationTable
@@ -823,6 +876,9 @@ public class cachedData {
         }
     }
 
+    /**
+     * @apiNote 实例化的时候需要用，根据deploymentName拿到MainProcessId(一般是空startEvent对应的那个)用于实例化
+     */
     public static String getMainProcessId(String deploymentName) {
         try {
             if (!deploymentNameToMainProcessDefinitionId.containsKey(deploymentName)) {
@@ -843,7 +899,7 @@ public class cachedData {
                 }
                 BpmnModel bpmnModel = cachedBpmnModel.get(deploymentName);
 
-                /**这一句看起来没什么鸟用，但是如果使用到了errorBoundaryEvent就很有用
+                /**这一句看起来没什么用，但是如果使用到了errorBoundaryEvent就很有用
                  * 你不可能每次判断都去数据库把BpmnModel读出来然后解析一遍吧，而且这个是很固定的
                  * 就每个deployment缓存一个 2023-6-1
                  */

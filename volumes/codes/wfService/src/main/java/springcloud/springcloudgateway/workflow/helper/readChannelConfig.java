@@ -14,7 +14,11 @@ import org.springframework.stereotype.Component;
 
 import springcloud.springcloudgateway.workflow.tools.read;
 
-
+/*
+ * 2025/4/1
+ * 读取区块链workflowChannel节点配置
+ * 配置文件在/sdk-application/artifacts/channel/channelConfig
+ */
 @Component
 public class readChannelConfig {
     public final String peerName="peerName";

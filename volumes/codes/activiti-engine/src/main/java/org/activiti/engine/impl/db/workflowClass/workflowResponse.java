@@ -14,17 +14,25 @@ import java.util.Set;
 import org.activiti.engine.impl.db.redis.useRedis;
 import org.activiti.engine.impl.db.redis.tools.jackJson.jsonTransfer;
 
+/**
+ * @apiNote 模拟执行后返回的结果(网络上传输的就是这个的序列化)
+ */
 public class workflowResponse implements Serializable{
     private static final long serialVersionUID = 1L;
     private String Oid;
     private Set<String> fromTaskName;
     private Set<String> toTaskName;//本来是set,但是fastjson在多层上的性能有待考证，所有toTaskName采用string,用“,”间隔
     //private String businessData;//弃用，原因是业务数据流可以在上层进行处理，服务任务也是上层进行调用。
+    //是否是部署
     private boolean isDeploy;
+    //流程是否结束
     private boolean isEnd;
     private String deploymentName;
+    //业务输出，就是CommandContext中的lastResponse
     private String businessData;
+    //服务任务执行结果
     private String serviceTaskResultJson="{}";
+    //这个可能现在没用了，但是也不好删除，怕出错
     private List<String> serviceUrls=new ArrayList<>();
     //用于读写集
     private String readSetJson="";

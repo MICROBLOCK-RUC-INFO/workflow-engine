@@ -22,26 +22,43 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-
-
+/**
+ * @apiNote 缓存的insert,delete,update的entity对象(deploy,instance,complete)
+ */
 public class cachedFlushObjects {
     /*
-     * 以Oid作为key
+     * 结构如下
+     * <oid,<EntityType,<EntityId,EntityObject>>>
      */
     private static volatile ConcurrentHashMap<String,Map<Class<? extends Entity>, Map<String, Entity>>> cachedInsert=new ConcurrentHashMap<>(20000);
+    /*
+     * 结构如下
+     *  <oid,<EntityType,<EntityId,EntityObject>>>
+     */
     private static volatile ConcurrentHashMap<String,Map<Class<? extends Entity>, Map<String, Entity>>> cachedDelete=new ConcurrentHashMap<>(20000);
+    /*
+     * 结构如下
+     * <oid,[updatedEntities]>
+     */
     private static volatile ConcurrentHashMap<String,List<Entity>> cachedUpdate=new ConcurrentHashMap<>(20000);
     //private static volatile Map<String,HashMap<String,String>> currentTaskId=new HashMap<>();//这个也准备改到activiti上一层
     private static volatile ConcurrentHashMap<String,cachedResponse> cachedResponse=new ConcurrentHashMap<>(20000);
     private static Logger logger=LoggerFactory.getLogger(cachedFlushObjects.class);
 
-
+    /**
+     * @apiNote 根据oids将缓存的数据写入redis
+     * @param Oids 所有需要写入redis的实例的唯一id
+     * @return
+     */
     public static String flushCachedObjectsToRedis(CommandContext commandContext,String[] Oids) {
         List<Map<Class<? extends Entity>, Map<String, Entity>>> insertedList=new LinkedList<>();
         List<Map<Class<? extends Entity>, Map<String, Entity>>> deletedList=new LinkedList<>();
         List<Entity> updatedObjects=new ArrayList<>();
         for (String Oid:Oids) {
             if (Oid.endsWith(".bpmn")) {
+                /*
+                 * 部署的话，需要同时写数据库，因为在实例化有些复杂的查询涉及到部署的BPMN，字段映射有点麻烦(已经加了缓存，所以性能没问题)
+                 */
                 Map<Class<? extends Entity>, Map<String, Entity>> inserts=cachedInsert.remove(Oid);
                 Map<Class<? extends Entity>, Map<String, Entity>> deletes=cachedDelete.remove(Oid);
                 List<Entity> updates=cachedUpdate.remove(Oid);
@@ -76,6 +93,7 @@ public class cachedFlushObjects {
         //System.out.println("2");
         useRedis.deleteListToRedis(deletedList);
         //System.out.println("3");
+        //这个如果是deploy，就会有写数据库，不是的话，这个操作不会有写库
         commandContext.getDbSqlSession().justFlush();
         insertedList.clear();
         updatedObjects.clear();
@@ -84,7 +102,9 @@ public class cachedFlushObjects {
         return "success";
     }
 
-    //欲执行的结果先存入cache,等待链上数据写入后，执行写库操作----注意深拷贝，浅拷贝，Map为深拷贝,List的addAll
+    /**
+     * @apiNote 缓存需要写入的数据
+     */
     public static void storeInsertToCache(Map<Class<? extends Entity>, Map<String, Entity>> insertedObjects,String Oid) {
         // if (!cachedInsert.containsKey(Oid)) {
         //     cachedInsert.put(Oid,new HashMap<Class<? extends Entity>, Map<String, Entity>>());
@@ -102,6 +122,9 @@ public class cachedFlushObjects {
         cachedInsert.put(Oid,temp);
     }
 
+    /**
+     * @apiNote 缓存需要更新的数据
+     */
     public static void storeUpdateToCache(List<Entity> updatedObjects,String Oid) {
         // if (!cachedUpdate.containsKey(Oid)) {
         //     cachedUpdate.put(Oid,new LinkedList<Entity>());
@@ -112,6 +135,9 @@ public class cachedFlushObjects {
         cachedUpdate.put(Oid,temp);
     }
 
+    /**
+     * @apiNote 缓存需要删除的数据
+     */
     public static void storeDeleteToCache(Map<Class<? extends Entity>, Map<String, Entity>> deletedObjects,String Oid) {
         // if (!cachedDelete.containsKey(Oid)) {
         //     cachedDelete.put(Oid,new HashMap<Class<? extends Entity>, Map<String, Entity>>());
@@ -129,6 +155,9 @@ public class cachedFlushObjects {
         cachedDelete.put(Oid,temp);
     }
 
+    /**
+     * @apiNote 缓存所有数据
+     */
     public static void storeDataToCache(Map<Class<? extends Entity>, Map<String, Entity>> insertedObjects,List<Entity> updatedObjects,
     Map<Class<? extends Entity>, Map<String, Entity>> deletedObjects,String Oid,String businessData) {
         //处理数据获得cachedResponse结构体

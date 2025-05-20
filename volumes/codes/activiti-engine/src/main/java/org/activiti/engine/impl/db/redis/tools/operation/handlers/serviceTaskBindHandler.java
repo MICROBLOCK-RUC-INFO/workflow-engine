@@ -8,7 +8,7 @@ import org.activiti.engine.impl.db.redis.tools.operation.taskBind.tableOperator;
 public class serviceTaskBindHandler extends binderImpl implements handler{
 
     /**
-     * @apiNote 这个函数预留给校验用的
+     * @apiNote 这个函数本来是预留给校验用的，但是现在的实现没用这个
      * @return 
      */
     public boolean verify() {
@@ -16,6 +16,7 @@ public class serviceTaskBindHandler extends binderImpl implements handler{
     }
 
     /**
+     * @apiNote 获得绑定的服务信息
      * @param oid 表示唯一的工作流实例
      * @param taskName 任务名
      * @return 如果有分配返回对应值是一个json字符串，没有绑定则返回null

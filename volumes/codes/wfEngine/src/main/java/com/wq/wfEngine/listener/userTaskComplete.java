@@ -16,6 +16,9 @@ import org.activiti.engine.impl.context.Context;
 import org.activiti.engine.impl.db.cache.oidEvents;
 import org.activiti.engine.impl.interceptor.CommandContext;
 
+/**
+ * @apiNote activiti.跨泳道的用户任务完成需要加这个。如果只有一个泳道就不需要。其实也不需要多个泳道
+ */
 public class userTaskComplete implements TaskListener {
     private Expression nextProcess;
     private Expression nextMessage;

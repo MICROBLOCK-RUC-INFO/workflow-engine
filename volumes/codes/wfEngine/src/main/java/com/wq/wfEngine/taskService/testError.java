@@ -13,6 +13,9 @@ import com.wq.wfEngine.WfEngineApplication;
 import com.wq.wfEngine.tool.jsonTransfer;
 import com.wq.wfEngine.tool.serviceComposition.inputSelector.simpleInputSelector;
 
+/**
+ * @apiNote 这是对应Travel图里的ErrorBoundaryEvent
+ */
 public class testError implements JavaDelegate{
     private Expression input;
     

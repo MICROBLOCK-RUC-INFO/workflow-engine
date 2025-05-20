@@ -18,6 +18,9 @@ import org.activiti.engine.impl.persistence.entity.ResourceEntityImpl;
 import org.activiti.engine.impl.persistence.entity.TaskEntityImpl;
 import org.activiti.engine.impl.persistence.entity.VariableInstanceEntityImpl;
 
+/**
+ * @apiNote 为了redis中存储的Key足够小
+ */
 public class typeTransfer {
     public final static String deployment="d";
     public final static String execution="e";

@@ -3,6 +3,9 @@ package com.wq.wfEngine.tool;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @apiNote 没用了，也是当初简单json解析
+ */
 public class jsonTreeNode {
     public String jsonStr;
     public Map<String,jsonTreeNode> sons;

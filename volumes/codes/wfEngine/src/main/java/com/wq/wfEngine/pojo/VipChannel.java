@@ -1,7 +1,9 @@
 package com.wq.wfEngine.pojo;
 
 import java.io.Serializable;
-
+/*
+ * 都是学姐之前的代码
+ */
 public class VipChannel implements Serializable {
     /*
      * 表明公司方对用户提出的问题是否可以解决的状态

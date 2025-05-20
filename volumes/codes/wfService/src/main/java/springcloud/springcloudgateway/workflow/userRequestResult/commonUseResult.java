@@ -3,11 +3,11 @@ package springcloud.springcloudgateway.workflow.userRequestResult;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 2025/4/30
+ * 执行结果缓存，还是跟之前一样不包括Deploy,instance,complete
+ */
 public class commonUseResult {
-    /**
-     * 有一个问题没有解决，就是这个key值到底是用oid,还是oid加操作类型，还是如何构造，这一块还没有想清楚
-     * 但是现在可以用，用的是oid,因为现在的操作类型只有bind一种，如果考虑未来操作类型有扩展的话首先应该解决这个问题
-     */
     private static ConcurrentHashMap<String,String> commonUseResponseCache=new ConcurrentHashMap<>();
 
     /**

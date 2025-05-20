@@ -29,6 +29,10 @@ import java.util.regex.Pattern;
 import java.util.concurrent.Future;
 
 
+/**
+ * 2025/5/2
+ * 大部分是学姐之前的代码，有一些复用
+ */
 
 public class ActivitiUtils {
     public static ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
@@ -39,12 +43,17 @@ public class ActivitiUtils {
 
 
 
-
+    /**
+     * @apiNote 这个是初始化Redis相关
+     */
     static public String InitRedis() {
         runtimeService.InitRedis();
         return "ok";
     }
 
+    /**
+     * @apiNote 这个没实现
+     */
     static public void deleteFromRedis() {
         runtimeService.DeleteFormRedis();
         return;

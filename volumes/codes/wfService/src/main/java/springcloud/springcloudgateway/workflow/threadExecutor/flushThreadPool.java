@@ -13,6 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
+/**
+ * 2025/4/10
+ * 这是上链的线程池，对应upLink线程，名字不用在意，应该是失误
+ */
 @Component
 public class flushThreadPool {
     private Logger logger=LoggerFactory.getLogger(flushThreadPool.class);

@@ -6,6 +6,9 @@ import java.util.concurrent.Future;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.HttpHostConnectException;
 
+/**
+ * @apiNote 没用了应该
+ */
 public class ServiceTaskWeb {
     public static Future<SimpleHttpResponse> doPost(String url,String jsonString) {
         try {

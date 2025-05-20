@@ -1,5 +1,8 @@
 package com.wq.wfEngine.tool.serviceComposition.simpleJson;
 
+/**
+ * @apiNote 当初的简单json解析用的，现在应该已经没用了
+ */
 public class stringToNum {
     public static Integer getInteger(String str) {
         try {

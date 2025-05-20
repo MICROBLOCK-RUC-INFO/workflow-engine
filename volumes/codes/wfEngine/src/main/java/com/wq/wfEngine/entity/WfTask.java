@@ -4,7 +4,9 @@ import com.alibaba.fastjson.JSON;
 import org.activiti.bpmn.model.FormProperty;
 
 import java.util.*;
-
+/*
+ * 都是学姐之前的代码
+ */
 public class WfTask {
     private String name;
     private String assignee = "";

@@ -1,5 +1,7 @@
 package com.wq.wfEngine.entity;
-
+/*
+ * 都是学姐之前的代码
+ */
 public class NetWorkRes {
     private String code;
     private String type;

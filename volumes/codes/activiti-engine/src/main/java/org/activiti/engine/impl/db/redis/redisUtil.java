@@ -12,7 +12,9 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-
+/**
+ * @apiNote redis客户端初始化
+ */
 public class redisUtil {
     private static StringRedisTemplate operatorRedis;
 

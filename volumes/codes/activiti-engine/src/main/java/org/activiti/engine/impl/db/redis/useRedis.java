@@ -41,7 +41,9 @@ import org.activiti.engine.impl.persistence.entity.VariableInstanceEntity;
 import org.activiti.engine.impl.persistence.entity.VariableInstanceEntityImpl;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-
+/**
+ * @apiNote redis访问都在这里
+ */
 
 public  class useRedis {
     public final static String TaskClass="class org.activiti.engine.impl.persistence.entity.TaskEntityImpl";
@@ -76,6 +78,9 @@ public  class useRedis {
         
     }
 
+    /**
+     * @apiNote redis中初始化EntityId
+     */
     public static void initRedisNextId() {
         if (!stringRedisTemplate.hasKey("ActivityEntityId")) {
             stringRedisTemplate.opsForValue().set("ActivityEntityId","20");
@@ -93,10 +98,17 @@ public  class useRedis {
         threadLocalCache.remove();
     }
 
+    /**
+     * @apiNote Entity获得id,
+     */
     @SuppressWarnings("null")
     public static String getNextId() {
         String res=null;
         synchronized (idMutex) {
+            /*
+             * 加锁，如果nowId<idLimit,则直接将nowId的值返回，然后+1
+             * 反之，则访问Redis,ActivityEntityId,+10000赋值给idLimit,然后将nowId的值返回，然后+1
+             */
             if (nowId>=idLimit) {
                 //这里没做null值判断
                 idLimit=stringRedisTemplate.opsForValue().increment("ActivityEntityId", 10000).longValue();
@@ -108,6 +120,9 @@ public  class useRedis {
         return res;
     }
 
+    /**
+     * @apiNote 对Redis中已有的实体进行字段映射初始化
+     */
     public static void initRedisFieldMap() {
         //Set<String> keys=otherJedis.keys("*");
         Set<String> keys=stringRedisTemplate.keys("*");
@@ -122,10 +137,14 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 根据deletedList进行Redis删除
+     */
     public static void deleteListToRedis(List<Map<Class<? extends Entity>, Map<String, Entity>>> deletedList) {
         List<String> removeList=new LinkedList<>();
         for (Map<Class<? extends Entity>, Map<String, Entity>> deletedObjects:deletedList) {
             if (deletedObjects.isEmpty()) {
+                //判空。跳过
                 continue;
             }
             for (Class<? extends Entity> clazz:deletedObjects.keySet()) {
@@ -135,6 +154,7 @@ public  class useRedis {
                 //t-
                 //String prefix=typeTransfer.getSimpleType.get(clazz.toString())+"-";
                 Map<String,Entity> entityMap=deletedObjects.get(clazz);
+                //删除字段映射
                 removeDeleteObjectsFieldMap(clazz,entityMap.values());
                 for (String entityId:entityMap.keySet()) {
                     stringBuilder.append(entityId);
@@ -151,10 +171,14 @@ public  class useRedis {
         // synchronized (deleteJedis) {
         //     deleteJedis.del(deleteKeys);
         // }
+        //删除
         stringRedisTemplate.delete(removeList);
         removeList.clear();
     }
 
+    /**
+     * @apiNote 根据deletedObjects删除，不用在意to和from
+     */
     public static void deleteToRedis(Map<Class<? extends Entity>, Map<String, Entity>> deletedObjects) {
         if (deletedObjects.isEmpty()) {
             return;
@@ -163,6 +187,7 @@ public  class useRedis {
         for (Class<? extends Entity> clazz:deletedObjects.keySet()) {
             String prefix=typeTransfer.getSimpleType.get(clazz.toString())+"-";
             Map<String,Entity> entityMap=deletedObjects.get(clazz);
+            //删除字段映射
             removeDeleteObjectsFieldMap(clazz,entityMap.values());
             for (String entityId:entityMap.keySet()) {
                 String key=prefix+entityId;
@@ -174,10 +199,14 @@ public  class useRedis {
         // synchronized (deleteJedis) {
         //     deleteJedis.del(deleteKeys);
         // }
+        //删除
         stringRedisTemplate.delete(removeList);
         removeList.clear();
     }
 
+    /**
+     * @apiNote 根据insertedList插入
+     */
     public static void insertListToRedis(List<Map<Class<? extends Entity>, Map<String, Entity>>> insertedList) {
         Map<String,String> setMap=new HashMap<>();
         //List<String> keyValueList=new ArrayList<>();
@@ -194,6 +223,7 @@ public  class useRedis {
                 //String prefix=typeTransfer.getSimpleType.get(clazz.toString())+"-";
                 Map<String,Entity> entityMap=insertedObjects.get(clazz);
                 //System.out.println("5");
+                //处理字段映射
                 handleEntitiesFieldMap(entityMap.values());
                 //System.out.println("6");
                 for (String entityId:entityMap.keySet()) {
@@ -212,11 +242,15 @@ public  class useRedis {
         //     mutilSetJedis.mset(keyValue);
         // }
         //keyValueList.clear();
+        //插入
         stringRedisTemplate.opsForValue().multiSet(setMap);
         setMap.clear();
     }
 
-    //必须先与update
+    
+    /**
+     * @apiNote 根据insertedObejcts插入
+     */
     public static void insertToRedis(Map<Class<? extends Entity>, Map<String, Entity>> insertedObjects) {
         if (insertedObjects.isEmpty()) {
             return;
@@ -226,6 +260,7 @@ public  class useRedis {
         for (Class<? extends Entity> clazz:insertedObjects.keySet()) {
             String prefix=typeTransfer.getSimpleType.get(clazz.toString())+"-";
             Map<String,Entity> entityMap=insertedObjects.get(clazz);
+            //处理字段映射
             handleEntitiesFieldMap(entityMap.values());
             for (String entityId:entityMap.keySet()) {
                 String key=prefix+entityId;
@@ -240,10 +275,14 @@ public  class useRedis {
         //     mutilSetJedis.mset(keyValue);
         // }
         //keyValueList.clear();
+        //插入
         stringRedisTemplate.opsForValue().multiSet(setMap);
         setMap.clear();
     }
 
+    /**
+     * @apiNote 根据updatedObjects更新
+     */
     public static void updateToRedis(List<Entity> updatedObjects) {
         if (updatedObjects.isEmpty()) {
             return;
@@ -255,6 +294,7 @@ public  class useRedis {
         for (Entity entity:updatedObjects) {
             Class<? extends Entity> clazz=entity.getClass();
             if (clazz.toString().equals(PropertyClass)) {
+                //特殊实体处理
                 updateRedisProperyData(entity);
             } else {
                 //先处理字段映射
@@ -262,6 +302,7 @@ public  class useRedis {
                 stringBuilder.append(typeTransfer.getSimpleType.get(clazz.toString())).append('-').append(entity.getId());
                 //keyValueList.add(stringBuilder.toString());
                 //keyValueList.add(entityToStream(entity));
+                //更新
                 setMap.put(stringBuilder.toString(),entityToStream(entity));
                 stringBuilder.setLength(0); 
             }
@@ -281,7 +322,9 @@ public  class useRedis {
 
 
 
-    //sunzhouxing:更新redis
+    /**
+     * @apiNote 只对应PropertyEntity
+     */
     public static void updateRedisProperyData(Entity entity) {
         String key=typeTransfer.getSimpleType.get(PropertyClass)+"-"+((PropertyEntityImpl)entity).getName();
         // synchronized (singleSetJedis) {
@@ -292,8 +335,9 @@ public  class useRedis {
  
 
 
-
-
+    /**
+     * @apiNote 将entity写入Redis
+     */
     public static void entityToRedis(Entity entity) {
         Class<? extends Entity> clazz=entity.getClass();
         String key;
@@ -305,7 +349,9 @@ public  class useRedis {
     }
 
 
-    //将list<entity>写入redis
+    /**
+     * @apiNote 将entites写入Redis,这个应该只有初始化的时候用一下
+     */
     public static void entitiesToRedisCache(List<Entity> entities) {
         try {
             if(entities.isEmpty()) {
@@ -349,7 +395,9 @@ public  class useRedis {
         }     
     }
 
-
+    /**
+     * @apiNote 根据entityId查询
+     */
     public static Object findByIdInRedis(String clazz,String entityId) {
         if (threadLocalCache.get()==null) {
             threadLocalCache.set(new LinkedHashMap<String,String>());
@@ -367,7 +415,9 @@ public  class useRedis {
     // public void putEntitiesIntoRedis(String fcn,String key) {
 
     // }
-    //将从redis内读取的数据转换成entity
+    /**
+     * @apiNote 将从redis内读取的字符串转换成entity
+     */
     public static Object streamToEntity(String value) {
         try {
             if (value==null) return null;
@@ -378,6 +428,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 将byte[]转换为entity
+     */
     public static Object streamToEntity(byte[] value) {
         try {
             if (value==null) {
@@ -395,7 +448,9 @@ public  class useRedis {
         }
     }
 
-    //将entity转换成string
+    /**
+     * @apiNote 这应该是ctrl c+v的时候出错的，应该没用
+     */
     public static <T> String entityToStream(Map<String, List<T>> deletedList) {
         try {
             ByteArrayOutputStream value=new ByteArrayOutputStream();
@@ -413,6 +468,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote entity转为字符串
+     */
     public static String entityToStream(Object object) {
         try {
             ByteArrayOutputStream value=new ByteArrayOutputStream();
@@ -430,6 +488,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 这个也怀疑是ctrl c+v的时候出错的，应该没用
+     */
     public static String entityToStream(List<Entity> objects) {
         try {
             ByteArrayOutputStream value=new ByteArrayOutputStream();
@@ -447,7 +508,9 @@ public  class useRedis {
         }
     }
 
-    //处理deleteObjects删除时的关键字段映射，返回需要的删除的key的list
+    /**
+     * @apiNote 删除要删除Entity的字段映射
+     */
     public static void removeDeleteObjectsFieldMap(Class<? extends Entity> clazz,Collection<Entity> entities) {
         if (entities.isEmpty()) return;
         Entity entity=entities.iterator().next();
@@ -492,7 +555,9 @@ public  class useRedis {
         //         return;
         // }
     }
-    //处理entity关键字段的映射，这样可以用deploymentId查找ResourceEntity
+    /**
+     * @apiNote 插入时，处理entities集合字段映射
+     */
     public static void handleEntitiesFieldMap(Collection<Entity> entities) {
         if (entities.isEmpty()) {
             return;
@@ -523,6 +588,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 插入时，处理entity字段映射
+     */
     public static void handleEntityFieldMap(Entity entity) {
         //Class<? extends Entity> clazz=entity.getClass();
         if (entity instanceof TaskEntityImpl) {
@@ -548,6 +616,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 创建更新TaskEntity字段映射
+     */
     public static void handleTaskEntityFieldMap(Entity entity) {
         TaskEntity taskEntity=(TaskEntity)entity;
         if (taskEntity.getExecutionId()!=null) {
@@ -561,6 +632,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 删除TaskEntity的字段映射
+     */
     public static void removeTaskEntitiesFieldMap(Collection<Entity> entities) {
         for (Entity entity:entities) {
             TaskEntity taskEntity=(TaskEntity)entity;
@@ -583,6 +657,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 创建更新VariableInstanceEntity(变量实体)字段映射
+     */
     public static void handleVariableInstanceEntityFieldMap(Entity entity) {
         VariableInstanceEntity variableInstanceEntity=(VariableInstanceEntity)entity;
         if (variableInstanceEntity.getExecutionId()!=null) {
@@ -593,6 +670,9 @@ public  class useRedis {
         }  
     }
 
+    /**
+     * @apiNote 删除VariableInstanceEntity(变量实体)字段映射
+     */
     public static void removeVariableInstanceEntitiesFieldMap(Collection<Entity> entities) {
         for (Entity entity:entities) {
             VariableInstanceEntity variableInstanceEntity=(VariableInstanceEntity)entity;
@@ -612,6 +692,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 创建更新ExecutionEntity(执行流程实体)字段映射
+     */
     public static void handleExecutionEntityFieldMap(Entity entity) {
         ExecutionEntity executionEntity=(ExecutionEntity)entity;
         if (executionEntity.getProcessInstanceId()!=null) {
@@ -634,7 +717,9 @@ public  class useRedis {
         }
     }
 
-
+    /**
+     * @apiNote 删除ExecutionEntity(执行流程实体)字段映射
+     */
     public static void removeExecutionEntitiesFieldMap(Collection<Entity> entities) {
         for (Entity entity:entities) {
             ExecutionEntity executionEntity=(ExecutionEntity)entity;
@@ -664,6 +749,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 创建更新PrcoessDefinitionEntity字段映射
+     */
     public static void handleProcessDefinitionEntityFieldMap(Entity entity) {
         ProcessDefinitionEntity processDefinitionEntity=(ProcessDefinitionEntity)entity;
         if (processDefinitionEntity.getDeploymentId()!=null) {
@@ -674,7 +762,9 @@ public  class useRedis {
         }
     }
 
-
+    /**
+     * @apiNote 删除PrcoessDefinitionEntity字段映射
+     */
     public static void removeProcessDefinitionEntitiesFieldMap(Collection<Entity> entities) {
         for (Entity entity:entities) {
             ProcessDefinitionEntity processDefinitionEntity=(ProcessDefinitionEntity)entity;
@@ -693,6 +783,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 创建更新DeploymentEntity字段映射
+     */
     public static void handleDeploymentEntityFieldMap(Entity entity) {
         DeploymentEntity deploymentEntity=(DeploymentEntity)entity;
         if (deploymentEntity.getName()!=null) {
@@ -700,6 +793,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 删除DeploymentEntity字段映射
+     */
     public static void removeDeploymentEntitiesFieldMap(Collection<Entity> entities) {
         for (Entity entity:entities) {
             DeploymentEntity deploymentEntity=(DeploymentEntity)entity;
@@ -715,6 +811,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 创建更新ResourceEntity字段映射
+     */
     public static void handleResourceEntityFieldMap(Entity entity) {
         ResourceEntity resourceEntity=(ResourceEntity)entity;
         if (resourceEntity.getDeploymentId()!=null) {
@@ -722,6 +821,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 删除ResourceEntity字段映射
+     */
     public static void removeResourceEntitiesFieldMap(Collection<Entity> entities) {
         for (Entity entity:entities) {
             ResourceEntity resourceEntity=(ResourceEntity)entity;
@@ -737,6 +839,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 创建更新EventSubscriptionEntity字段映射
+     */
     public static void handleEventSubSrcEntityFieldMap(Entity entity) {
         EventSubscriptionEntity eventSubscriptionEntity=(EventSubscriptionEntity)entity;
         // if (eventSubscriptionEntity.getEventType()!=null) {
@@ -762,6 +867,9 @@ public  class useRedis {
         }
     }
 
+    /**
+     * @apiNote 删除EventSubscriptionEntity字段映射
+     */
     public static void removeEventSubSrcEntitiesFieldMap(Collection<Entity> entities) {
         for (Entity entity:entities) {
             EventSubscriptionEntity eventSubscriptionEntity=(EventSubscriptionEntity)entity;
@@ -782,6 +890,10 @@ public  class useRedis {
         }
     }
 
+    /*
+     *-------------------------------------------------------------------------------------------------------------------------
+     * 之后的find开头的都是根据入参去查询对应实体
+     */
 
     public static List<Object> findEventSubScriptionEntityByNameAndExecution(String eventType,String eventName,String executionId) {
         List<Object> eventSubScriptionList=new LinkedList<>();

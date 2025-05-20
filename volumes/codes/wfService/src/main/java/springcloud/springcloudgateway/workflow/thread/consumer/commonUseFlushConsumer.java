@@ -21,7 +21,16 @@ import org.slf4j.LoggerFactory;
 import springcloud.springcloudgateway.workflow.tools.httpUtil;
 import springcloud.springcloudgateway.workflow.userRequestResult.commonUseResult;
 
+/**
+ * 2025/4/9
+ * flush，这是一个Java提供的函数接口
+ * 同样与deploy,instance,complete区分开了，因为这三者是缓存在本地的，调用的接口不同(名字可能取的有些迷惑性)
+ */
 public class commonUseFlushConsumer implements Consumer<TransactionEvent>{
+    /**
+     * args(0)是大包中的Key列表，args(1)是大包中缓存的模拟执行结果(读写集)列表
+     *
+     */
     private List<List<String>> args;
     private List<String> flushUrls;
     private int index=0;
@@ -38,11 +47,20 @@ public class commonUseFlushConsumer implements Consumer<TransactionEvent>{
                         }).collect(Collectors.toList());
     }
 
-    
+    /**
+     * 具体的执行过程
+     * @param arg0 这个参数是java-fabric-sdk定义的Transaction事件
+     */
     @Override
     public void accept(TransactionEvent arg0) {
+        //判定结果是否有效
         if (!arg0.isValid()) return;
+        //<Pair< Pair <key,缓存的模拟执行结果> >, List<各peer节点flush执行结果>>
         List<Pair<Pair<String,String>,List<Future<SimpleHttpResponse>>>> allResult=new ArrayList<>();
+        /**
+         * 遍历列表，对每个模拟执行结果执行flush
+         * (这里应该可以优化)
+         */
         args.get(1).forEach(rwSet -> {
             try {
                 allResult.add(Pair.of(Pair.of(args.get(0).get(index++),rwSet),httpUtil.multiPost(flushUrls.iterator(), rwSet)));
@@ -50,6 +68,9 @@ public class commonUseFlushConsumer implements Consumer<TransactionEvent>{
                 logger.warn("commonUse flush http request error, rwSet "+rwSet+" ,cause by "+e.getMessage());
             }
         });
+        /**
+         * 遍历flush执行结果
+         */
         allResult.forEach(resultPair -> {
             try {
                 int count=0;
@@ -62,8 +83,10 @@ public class commonUseFlushConsumer implements Consumer<TransactionEvent>{
                     logger.warn("flush error,cause by same results less than 2/3");
                     //失败的操作
                 } else {
+                    /**
+                     * 成功将结果放入缓存等用户访问
+                     */
                     commonUseResult.addResult(resultPair.getKey().getKey(), "{\"code\":200,\"body\":\"rwSet: "+resultPair.getKey().getValue()+" flush success\"}");
-                    //成功的操作
                 }
             } catch (Exception e) {
                 logger.warn("commonUse flush request future.get() error, oid "+resultPair.getKey().getKey()+" ,cause by "+e.getMessage());

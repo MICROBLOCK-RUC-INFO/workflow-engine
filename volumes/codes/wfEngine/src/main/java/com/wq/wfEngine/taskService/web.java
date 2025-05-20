@@ -28,6 +28,9 @@ import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @apiNote 服务任务调用服务的代码
+ */
 public class web implements JavaDelegate {
     //使用监控链调服务的服务名
     private Expression serviceName;
@@ -52,6 +55,9 @@ public class web implements JavaDelegate {
     private Expression nextMessage;
     private final Logger logger=LoggerFactory.getLogger(web.class); 
 
+    /**
+     * @apiNote 服务信息的类
+     */
     static class arguments{
         String serviceName;
         String serviceGroup;
@@ -69,27 +75,45 @@ public class web implements JavaDelegate {
             return serviceName!=null;
         }
     }
-
+    
+    /**
+     * @apiNote 获取服务任务的服务调用时的JSON数据
+     */
     public Map<String,Object> getHttpData(arguments args,DelegateExecution execution,
                 jsonPathInputSelector selector,Map<String,Object> dataPool) {
+        //通过activiti-engine,获得用户输入的数据businessData,和上一个服务任务的返回lastResponse
         CommandContext commandContext=Context.getCommandContext();
         String businessData=commandContext.getBusinessData();
         String lastResponse=commandContext.getLastResponse();
         String body="{}";
-        //提取input
+
         if (args.input==null||args.input.equals("default")) {
+            /*
+            * 如果服务任务的input为空或者为"default",
+            * 则将lastResponse作为输入，如果没有则将businessData作为输入
+            */
             if (lastResponse==null) {
                 body=businessData;
             } else {
                 body=lastResponse;
             }
         } else if (args.input.equals("business")) {
+            /*
+             * 如果input为"business",则将businessData作为输入
+             */
             body=businessData;
         } else {
+            /*
+             * 其他情况则根据input和实例中服务返回的数据和输入生成输入
+             */
             body=selector.select(dataPool,args.input);
         }
-        //智慧城市的modify
+
+        //智慧城市的modify，暂时注释
         //body=modify(body,args.modify)
+        /*
+         * 创建并返回Map(Json数据)
+         */
         Map<String,Object> postMap=new HashMap<>();
         postMap.put("s-consumerName",commandContext.getOid()+"@"+execution.getCurrentFlowElement().getName());
         postMap.put("s-serviceName",args.serviceName);
@@ -103,33 +127,52 @@ public class web implements JavaDelegate {
         return postMap;
     }
 
+    /**
+     * @apiNote 服务调用返回结果处理
+     */
     public void handleResponse(SimpleHttpResponse response,DelegateExecution execution) {
         String activitiId=execution.getCurrentActivityId();
         String serviceTaskName=execution.getCurrentFlowElement().getName();
         CommandContext commandContext=Context.getCommandContext();
         String oid=commandContext.getOid();
         if (response.getCode()!=200) {
+            //如果服务返回报错
             if (cachedData.hasErrorBoundaryEvent(activitiId, oid.split("@")[0])) {
+                /*
+                 * 如果对应BPMN图有ErrorBoundaryEvent就抛出BpmnError，这个Error在Activiti底层会触发该Event
+                 */
                 serviceTaskRes result=new serviceTaskRes();
                 result.setStatus(false);
                 result.setBody(response.getBodyText());
                 cachedServiceTaskResult.getServiceTaskRes(oid).put(serviceTaskName,result);
                 throw new BpmnError("httpError");
             } else {
+                /*
+                 * 如果没有，则正常抛出服务调用出错
+                 */
                 throw new RuntimeException("服务调用出错,返回结果:"+response.getBodyText());
             }
             //throw new BpmnError("httpError",response.getBodyText());
         } else {
+            //如果服务返回正常
+
+            //如果返回是加锁失败，则直接抛出异常
             if (response.getBodyText().equals("try lock failed")) throw new RuntimeException("加锁失败"); 
             serviceTaskRes result=new serviceTaskRes();
             result.setStatus(true);
             result.setBody(response.getBodyText());
+            //缓存服务返回结果
             cachedServiceTaskResult.getServiceTaskRes(oid).put(serviceTaskName,result);
         }
+        //设置lastResponse
         commandContext.setLastResponse((response.getBodyText()));
+        //保存服务返回结果
         commandContext.storeOutput(serviceTaskName, jsonTransfer.jsonToMap(response.getBodyText()));
     }
 
+    /**
+     * @apiNote 这个负责处理，当服务任务存在跨泳道的序列流或者跨泳道的信息流，创建下一步流程
+     */
     public void handleNext(arguments args,DelegateExecution execution) {
         RuntimeService runtimeService = ActivitiUtils.runtimeService;
         String oid=Context.getCommandContext().getOid();
@@ -145,6 +188,9 @@ public class web implements JavaDelegate {
         }
     }
 
+    /**
+     * @apiNote 对服务任务的服务信息做检查
+     */
     public void argsCheck(arguments args) {
         if (args.serviceName!=null) {
             if (args.route==null) throw new RuntimeException("serviceName不为空的情况下,route不能为空");
@@ -153,6 +199,9 @@ public class web implements JavaDelegate {
         }
     }
 
+    /**
+     * @apiNote 初始化服务信息参数
+     */
     public arguments getArgs(DelegateExecution execution) {
         arguments args=new arguments();
         String oid=Context.getCommandContext().getOid();
@@ -185,6 +234,9 @@ public class web implements JavaDelegate {
         return args;
     }
 
+    /**
+     * @apiNote 智慧城市使用的，他们需要对输入值做修改，做了简单的字符串拼接
+     */
     private String modify(String body,String modify) {
         if (modify!=null) {
             Map<String,Object> bodyMap=jsonTransfer.jsonToMap(body);
@@ -209,35 +261,65 @@ public class web implements JavaDelegate {
         return body;
     }
 
+    /**
+     * @apiNote 执行逻辑
+     */
     public void execute (DelegateExecution execution) {
         try {
             CommandContext commandContext=Context.getCommandContext();
             String oid=commandContext.getOid();
+            //初始化服务信息的参数
             arguments args=getArgs(execution);
+            
+            //参数检查
             argsCheck(args);
+
             if (args.isService()) {
+                //当服务任务有要调用的服务时(就不是一个空的服务任务)
                 Map<String,serviceTaskRes> serviceTaskResMap= commandContext.getServiceTaskRes();                                
                 if (serviceTaskResMap==null) {
+                    /*
+                     * 如果没有serviceTaskResultMap,则认为之前还没有调用过服务
+                     * 即将由本节点来执行服务调用
+                     */
                     if (!cachedServiceTaskResult.isCreateMap(oid)) {
+                        /*
+                         * 这是检查服务任务返回结果的缓存，没有就为该实例创建一个
+                         */
                         cachedServiceTaskResult.addServiceTaskRes(new HashMap<String,serviceTaskRes>(), oid);    
                     }
                     String monitorUrl="http://127.0.0.1:8999/grafana/run?loadBalance=enabled";
                     jsonPathInputSelector jsonPathInputSelector=WfEngineApplication.context.getBeanFactory().getBean(jsonPathInputSelector.class);
+                    
+                    //这是拿到所有服务任务的返回结果和用户的输入
                     Map<String,Object> dataPool=commandContext.getCachedOutput();
+
+                    //根据服务信息中的input和dataPool,生成服务的输入
                     Map<String,Object> postMap=getHttpData(args, execution, jsonPathInputSelector,dataPool);
                     System.out.println(String.format("service:%s调用服务%s",execution.getCurrentFlowElement().getName(),jsonTransfer.toJsonString(postMap)));
+                   
+                    //调用服务，获得返回结果response
                     Future<SimpleHttpResponse> future = Connect.doPost(monitorUrl, jsonTransfer.toJsonString(postMap));
                     SimpleHttpResponse response = future.get();
+                    
+                    //处理返回结果
                     handleResponse(response, execution);
+
                     if (args.output!=null) {
+                        //如果output参数不为空，则根据output对输出进行处理
                         String outputString=jsonPathInputSelector.select(dataPool, args.output);
                         commandContext.setLastResponse(outputString);
                     }
                     if (args.processVariable!=null) {
+                        //如果processVariable，则根据processVariable对流程中的变量做处理
                         Map<String,Object> variables=jsonTransfer.jsonToMap(jsonPathInputSelector.select(dataPool, args.processVariable));
                         execution.setVariables(variables);
                     }
                 } else {
+                    /*
+                     * 如果有serviceTaskResultMap,则认为之前已经调用过服务
+                     * 不执行服务调用，本来应该做校验的，但是这里没有实现
+                     */
                     String serviceTaskName=execution.getCurrentFlowElement().getName();
                     serviceTaskRes serviceTaskRes= serviceTaskResMap.get(serviceTaskName);
                     if (serviceTaskRes==null) {
@@ -248,6 +330,7 @@ public class web implements JavaDelegate {
                     }
                 }
             }
+            //创建下一个流程，如果有的话
             handleNext(args, execution);
         } catch (Exception e) {
             e.printStackTrace();

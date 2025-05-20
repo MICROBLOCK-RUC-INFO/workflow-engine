@@ -1,7 +1,9 @@
 package com.wq.wfEngine.entity;
 
 
-
+/*
+ * 都是学姐之前的代码
+ */
 public class WfResultDTO {
     private String code;
     private String data;

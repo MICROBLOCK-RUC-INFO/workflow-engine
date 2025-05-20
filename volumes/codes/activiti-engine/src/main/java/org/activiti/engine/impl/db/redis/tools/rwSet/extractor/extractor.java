@@ -20,8 +20,14 @@ import org.activiti.engine.impl.persistence.entity.TaskEntityImpl;
 import org.activiti.engine.impl.persistence.entity.VariableInstanceEntity;
 import org.activiti.engine.impl.persistence.entity.VariableInstanceEntityImpl;
 
+/**
+ * @apiNote 提取生成读写集用，父类
+ */
 public class extractor {
 
+    /**
+     * @apiNote 根据entities,将生成的写集写入extractList
+     */
     protected static void handleEntities(Entity typeEntity,Iterator<Entity> entities,List<simpleEntity> extractList,String writeType) {
         if (typeEntity instanceof TaskEntityImpl) {
             while (entities.hasNext()) {
@@ -68,6 +74,9 @@ public class extractor {
         }
     }
 
+    /**
+     * @apiNote 根据entity返回简化版的实体，原有entity属性太多
+     */
     protected static simpleEntity handleEntity(Entity entity) {
         if (entity instanceof TaskEntityImpl) {
             return handleTask((TaskEntity)entity);

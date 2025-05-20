@@ -12,6 +12,9 @@ import org.activiti.engine.impl.db.redis.tools.operation.operations.operationSel
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @apiNote 管理一些类
+ */
 public class workflowContext {
     private static operationSelector operationSelector;
     private static ServiceCache serviceCache;

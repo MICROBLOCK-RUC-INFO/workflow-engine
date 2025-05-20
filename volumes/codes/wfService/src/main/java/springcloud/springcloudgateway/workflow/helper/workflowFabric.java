@@ -32,6 +32,9 @@ import com.alibaba.fastjson.JSON;
 
 import springcloud.springcloudgateway.service.fabric.FabricUserBean;
 
+/*
+ *2025/4/7
+ */
 @Service
 public class workflowFabric {
     private HFClient client=null;
@@ -46,17 +49,23 @@ public class workflowFabric {
     @Resource
     readChannelConfig readChannelConfig;
 
+    //通道名
     private final String channelName="workflowchannel";
+    //调用链码名
     private final String chaincodeName="wfscc";
 
     
     public void init() throws InvalidArgumentException, TransactionException, ChaincodeEndorsementPolicyParseException, ProposalException, IOException {
+        //创建client端
         initializeClient();
+        //创建通道
         initWorkflowChannel(client, channelName);
+        //设定通道内peer节点的Transaction的事件监听
         initTransactionOptions();
         logger.info("fabric client and workflowChannel init successfully");
     }
 
+    //设定通道内peer节点的Transaction的事件监听
     private void initTransactionOptions() {
         opts = new Channel.TransactionOptions();
         Channel.NOfEvents nOfEvents = Channel.NOfEvents.createNofEvents();
@@ -65,10 +74,12 @@ public class workflowFabric {
             nOfEvents.addEventHubs(eventHubs);
         }
         nOfEvents.addPeers(workflowchannel.getPeers(EnumSet.of(Peer.PeerRole.EVENT_SOURCE)));
+        //这句最重要，1表示任一节点完成区块链写入就认为Transaction写入成功，能大大提高响应时间。
         nOfEvents.setN(1);
         opts.nOfEvents(nOfEvents);
     }
 
+    //创建client端
     private void initializeClient() {
         //初始化客户端需要用到  用户名称、MSPID、用户公私钥
         try {
@@ -90,6 +101,7 @@ public class workflowFabric {
         }
     }
 
+    //链码的query操作
     public Collection<ProposalResponse> query(String channelName, String chaincodeName, 
                                                 String fcn, ArrayList<String> args) {
         try {
@@ -104,6 +116,7 @@ public class workflowFabric {
             request.setChaincodeID(ccid);
             request.setFcn(fcn);
             request.setArgs(args);
+            //设置超时时间
             request.setProposalWaitTime(20*1000L);
             Collection<ProposalResponse> responses=workflowchannel.queryByChaincode(request);
             logger.info("query responses {}",responses);
@@ -114,6 +127,7 @@ public class workflowFabric {
         }
     }
 
+    //链码调用
     public CompletableFuture<TransactionEvent> invoke(String channelName, 
     String chaincodeName,String fcn, ArrayList<String> args) {
         try {
@@ -129,28 +143,20 @@ public class workflowFabric {
             request.setChaincodeID(ccid);
             request.setFcn(fcn);
             request.setArgs(args);
+             //设置超时时间
             request.setProposalWaitTime(20*1000L);
             //System.out.println("ccid:"+request.getChaincodeID().toString());
 
-            //上链sendTransaction-实际执行(写入wfscc链码中-暂时wfscc还需要修改以适配)
+            //将request发送给背书节点背书
             Collection<ProposalResponse> responses=workflowchannel.sendTransactionProposal(request);
-            //System.out.println("ccresponse:"+responses.size());
-            //System.out.println(new String(responses.iterator().next().getChaincodeActionResponsePayload()));
             boolean success=true;
             for (ProposalResponse response:responses) {
-                //链码执行结果判断
-                // System.out.println(response.getStatus());
-                // System.out.println(response.getChaincodeActionResponsePayload());
-                // System.out.println(response.getChaincodeActionResponseReadWriteSetInfo().toString());
-                // System.out.println(response.getChaincodeID());
-                // System.out.println(response.getChaincodeActionResponseStatus());
-                // System.out.println(response.getPeer());
                 if (response.isInvalid()) {
                     success=false;
                     System.out.println(response.getMessage());
                 }
             }
-            //写区块
+            //写区块，将Transaction发送给orderer节点
             CompletableFuture<TransactionEvent> ordererServiceRes= workflowchannel.sendTransaction(responses);
             if (success) return ordererServiceRes;
             else return null;
@@ -161,7 +167,7 @@ public class workflowFabric {
     }
 
     /**
-     * 
+     * 魔改的链码调用，工作流专用版
      * @param channelName
      * @param chaincodeName
      * @param fcn wfscc只实现了flush这一个功能
@@ -183,12 +189,15 @@ public class workflowFabric {
             request.setChaincodeID(ccid);
             request.setFcn(fcn);
             request.setArgs(args);
+            //设置超时时间
             request.setProposalWaitTime(20*1000L);
             //System.out.println("ccid:"+request.getChaincodeID().toString());
 
-            //上链sendTransaction-实际执行(写入wfscc链码中-暂时wfscc还需要修改以适配)
-            //需要修改
-            //Collection<ProposalResponse> responses=workflowchannel.sendTransactionProposal(request);
+            /*
+             * 工作流专用版
+             * 原先这里是将请求发送给背书节点背书。但是由于我们已经经过各节点的工作流引擎执行，所以背书显得冗余。
+             * 但是又需要构造一个Transaction来写入区块，所以更改了java-fabric-sdk源码，没有经过背书，直接通过request来生成Transaction
+             */
             Collection<ProposalResponse> responses_workflow=workflowchannel.sendTransactionProposal_workflow(request);
             //System.out.println("ccresponse:"+responses.size());
             //System.out.println(new String(responses.iterator().next().getChaincodeActionResponsePayload()));
@@ -203,7 +212,7 @@ public class workflowFabric {
                     success=false;
                 }
             }
-            //写区块
+            //写区块，将Transaction发送给orderer节点
             CompletableFuture<TransactionEvent> ordererServiceRes= workflowchannel.sendTransaction(responses_workflow,opts);
             if (success) return ordererServiceRes;
             else return null;
@@ -213,6 +222,7 @@ public class workflowFabric {
         return null;
     }
 
+    //取得通道中Peer节点的IP
     public List<String> getPeersIp(String channelName) {
         try {
             if (workflowchannel==null) {
@@ -237,6 +247,7 @@ public class workflowFabric {
     }
 
 
+    //创建peer节点
     private Peer initWorkflowPeer(HFClient client, String peerTlsPath, String peerName,
                                 String peerAddr)
             throws InvalidArgumentException {
@@ -252,7 +263,7 @@ public class workflowFabric {
     }
 
 
-
+    //创建orderer节点
     private Orderer initWorkflowOrderer(HFClient client, String ordererTlsPath,
                                       String ordererName, String ordererAddr)
             throws InvalidArgumentException {
@@ -268,21 +279,8 @@ public class workflowFabric {
     }
 
 
-
+    //创建通道
     private void initWorkflowChannel(HFClient client, String channelName) throws InvalidArgumentException, TransactionException {
-        //初始化channel需要使用到channel名称、初始化好的peer、
-        // 另外如果交易需要共识，则需要初始化orderer
-        // String ordererTlsPath=wfConfig.getOrdererTlsPath();
-        // String ordererName=wfConfig.getOrdererName();
-        // String ordererAddr=wfConfig.getOrdererAddr();
-        // String peerTlsPath=wfConfig.getPeerTlsPath();
-        // String peerName=wfConfig.getPeerName();
-        // String peerAddr=wfConfig.getPeerAddr();
-        // Channel channel = client.newChannel(channelName);
-        // channel.addOrderer(initWorkflowOrderer(client, ordererTlsPath, ordererName, ordererAddr));
-        // channel.addPeer(initWorkflowPeer(client, peerTlsPath, peerName, peerAddr));
-        // channel.initialize();
-        // this.workflowchannel=channel;
         Map<String,List<String>> peersProperties=readChannelConfig.getPeerConfig(wfConfig);
         Map<String,List<String>> orderersProperties=readChannelConfig.getOrdererConfig(wfConfig);
         List<String> peerNameList=peersProperties.get(readChannelConfig.peerName);
@@ -318,6 +316,7 @@ public class workflowFabric {
         this.workflowchannel=channel;
     }
 
+    //获得区块高度
     public long getBlockHeight() throws ProposalException, InvalidArgumentException {
         return workflowchannel.queryBlockchainInfo().getHeight();
     }

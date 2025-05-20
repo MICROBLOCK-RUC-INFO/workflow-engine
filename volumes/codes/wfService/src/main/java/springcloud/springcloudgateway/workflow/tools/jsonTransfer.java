@@ -7,7 +7,10 @@ import org.activiti.engine.impl.db.workflowClass.serviceTaskRes;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-
+/**
+ * 2025/4/30
+ * json工具
+ */
 public class jsonTransfer {
     private static ObjectMapper objectMapper=new ObjectMapper();
     public static Map<String,Object> jsonToMap(String jsonStr) {

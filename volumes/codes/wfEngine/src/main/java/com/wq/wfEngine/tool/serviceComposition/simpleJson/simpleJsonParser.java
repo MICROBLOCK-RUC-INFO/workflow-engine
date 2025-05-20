@@ -10,7 +10,7 @@ import java.util.Stack;
 /*
  * 简易的json解析
  * 使用栈，栈用来缓存对象，StringBuilder缓存字符串,appendStatus true已有左引号等待右引号，false等待左引号
- * 
+ * 目前没用了应该
  */
 public class simpleJsonParser {
     @SuppressWarnings("unchecked")

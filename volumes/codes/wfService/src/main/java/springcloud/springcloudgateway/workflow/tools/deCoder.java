@@ -3,7 +3,11 @@ package springcloud.springcloudgateway.workflow.tools;
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
 import java.util.Base64;
-
+/**
+ * 2025/4/30
+ * 将object序列化后的数据转为Obejct
+ * 先将byte[]或string用Base64解密，然后转为object
+ */
 public class deCoder {
     public static Object streamToEntity(String value) {
         try {

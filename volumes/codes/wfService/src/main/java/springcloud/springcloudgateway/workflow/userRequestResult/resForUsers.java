@@ -10,7 +10,10 @@ import org.activiti.engine.impl.db.workflowClass.workflowResponse;
 
 import springcloud.springcloudgateway.workflow.tools.jsonTransfer;
 
-
+/**
+ * 2025/4/30
+ * 执行结果缓存(Deploy,instance,complete)
+ */
 public class resForUsers {
     public static volatile ConcurrentHashMap<String,workflowResponse> successExecuteRes=new ConcurrentHashMap<>();
     //测试用的

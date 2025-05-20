@@ -2,6 +2,9 @@ package com.wq.wfEngine.tool.serviceComposition;
 
 import java.util.Map;
 
+/**
+ * @apiNote 没用了
+ */
 public class routeTransfer {
     public String transfer(String route,Map<String,Object> dataRoot) {
         int index=route.indexOf("?");

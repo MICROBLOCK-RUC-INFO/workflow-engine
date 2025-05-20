@@ -16,6 +16,10 @@ import springcloud.springcloudgateway.workflow.helper.workflowFabric;
 import springcloud.springcloudgateway.workflow.thread.consumer.flushConsumer;
 import springcloud.springcloudgateway.workflow.threadExecutor.activitiChangeExecutor;
 
+/**
+ * 2025/4/10
+ * 上链
+ */
 public class upLinkRunnable implements Runnable{
     private workflowFabric workflowfabric;
     private String channelName;
@@ -63,6 +67,9 @@ public class upLinkRunnable implements Runnable{
             success=false;
         }
         if (success) {
+            /**
+             * 创建flush线程，如果上链成功，则将TransactionEvent 作为flush线程的参数，交给activitiChangeExecutor线程池执行
+             */
             Consumer<TransactionEvent> flushConsumer=new flushConsumer(workflowfabric.getPeersIp(channelName), preDatas, args.get(0), isTest);
             orderServiceRes.thenAcceptAsync(flushConsumer,activitiChangeExecutor.getExecutor());
         }

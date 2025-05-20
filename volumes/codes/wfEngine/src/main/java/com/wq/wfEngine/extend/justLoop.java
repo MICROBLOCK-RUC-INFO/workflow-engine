@@ -5,6 +5,9 @@ import java.util.TimerTask;
 
 import com.wq.wfEngine.activiti.workflowFunction;
 
+/**
+ * @apiNote 简单的定时任务，因为mybatis数据库连接池的问题所以用的这种方法
+ */
 public class justLoop {
 
     public void start() {

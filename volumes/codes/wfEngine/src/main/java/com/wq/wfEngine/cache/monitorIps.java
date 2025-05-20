@@ -5,6 +5,9 @@ import java.util.List;
 
 import com.wq.wfEngine.tool.read;
 
+/**
+ * @apiNote 这个暂时没用了，当时是要通过监控链调用服务，然后才写了这个，轮流监控节点调用服务
+ */
 public class monitorIps {
     private static List<String> monitorIps;
     

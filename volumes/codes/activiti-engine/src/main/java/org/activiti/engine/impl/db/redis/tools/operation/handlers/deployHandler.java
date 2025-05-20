@@ -7,6 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+/**
+ * @apiNote 没实现
+ */
 public class deployHandler implements handler{
     private final static StringRedisTemplate redisClient=redisUtil.getTableRedisClient();
     private final static Logger logger=LoggerFactory.getLogger(deployHandler.class);
@@ -18,6 +21,9 @@ public class deployHandler implements handler{
         throw new UnsupportedOperationException("Unimplemented method 'simulate'");
     }
 
+    /**
+     * @apiNote 这个不是flush的功能，是写入部署BPMN时的组织
+     */
     @Override
     public boolean flush(Map<String, Object> params) {
         // TODO Auto-generated method stub

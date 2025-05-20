@@ -7,7 +7,10 @@ import java.io.InputStreamReader;
 
 import org.springframework.stereotype.Component;
 
-
+/**
+ * 2025/4/30
+ * 读文件工具
+ */
 public class read {
     public static String readFile(String path) {
         try {

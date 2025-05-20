@@ -15,12 +15,18 @@ import springcloud.springcloudgateway.workflow.helper.workflowFabric;
 import springcloud.springcloudgateway.workflow.thread.consumer.commonUseFlushConsumer;
 import springcloud.springcloudgateway.workflow.threadExecutor.activitiChangeExecutor;
 
+/**
+ * 2025/4/10
+ * 上链
+ */
 public class commonUseUpLinkRunnable implements Runnable{
     private workflowFabric workflowfabric;
     private String channelName;
     private String chaincodeName;
+    //链码对应的功能。根据自己的链码填写
     private String fcn;
     private ArrayList<List<String>> args;
+    //线程池
     private activitiChangeExecutor activitiChangeExecutor;
     private final Logger logger=LoggerFactory.getLogger(commonUseUpLinkRunnable.class);
 
@@ -38,6 +44,7 @@ public class commonUseUpLinkRunnable implements Runnable{
     @Override
     public void run() {
         boolean success=true;
+        //上链
         CompletableFuture<TransactionEvent> orderServiceRes= workflowfabric.workflowInvoke(channelName, chaincodeName
                                                                             , fcn, new ArrayList<String>(){{
                                                                                 add(JSON.toJSONString(args.get(0)));
@@ -49,6 +56,9 @@ public class commonUseUpLinkRunnable implements Runnable{
             logger.warn("commonUse UpLink failed");
         }
         if (success) {
+            /**
+             * 创建flush线程，如果上链成功，则将TransactionEvent 作为flush线程的参数，交给activitiChangeExecutor线程池执行
+             */
             Consumer<TransactionEvent> consumer=new commonUseFlushConsumer(workflowfabric.getPeersIp(channelName),args);
             orderServiceRes.thenAcceptAsync(consumer,activitiChangeExecutor.getExecutor());
             logger.info("commonUse UpLink success");

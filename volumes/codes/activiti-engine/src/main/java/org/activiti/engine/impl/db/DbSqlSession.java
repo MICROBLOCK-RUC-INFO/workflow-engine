@@ -634,6 +634,9 @@ public class DbSqlSession implements Session {
         useRedis.handleEntitiesFieldMap(loadedObjects);
     }
 
+    /**
+     * @apiNote 就只用在有部署的实体写入的时候
+     */
     public void justFlush() {
         flushInserts();
         flushUpdates();
@@ -769,6 +772,9 @@ public class DbSqlSession implements Session {
         CommandContext commandContext= Context.getCommandContext();
 
         if (commandContext.isSegmentedExecution()) {
+            /*
+             * 这个是通过docker的环境变量设置，true就会分simulate和flush,先缓存然后再写库
+             */
             String Oid=commandContext.getOid();
             String serviceResponse=commandContext.getLastResponse();
             cachedFlushObjects.storeDataToCache(insertedObjects, updatedObjects, deletedObjects, Oid,serviceResponse);

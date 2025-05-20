@@ -8,6 +8,9 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+/**
+ * @apiNote 没用了
+ */
 public class hMacMD5 {
     public static int encode(String data,String key) throws InvalidKeyException, NoSuchAlgorithmException {
         //根据给定的字节数组构造一个密钥,第二参数指定一个密钥算法的名称

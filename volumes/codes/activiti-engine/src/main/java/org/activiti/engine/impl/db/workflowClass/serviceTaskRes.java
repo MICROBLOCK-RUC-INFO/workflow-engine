@@ -1,6 +1,8 @@
 package org.activiti.engine.impl.db.workflowClass;
 
-
+/**
+ * @apiNote 服务执行结果
+ */
 public class serviceTaskRes {
     private boolean status;
     private String body;

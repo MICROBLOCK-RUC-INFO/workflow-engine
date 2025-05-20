@@ -6,6 +6,9 @@ import java.util.Set;
 
 import org.apache.commons.lang3.RandomStringUtils;
 
+/**
+ * @apiNote 模拟恶意节点随机生成执行结果
+ */
 public class randomGenerator {
     public static String getWorkflowResponseString() {
         Random r=new Random();

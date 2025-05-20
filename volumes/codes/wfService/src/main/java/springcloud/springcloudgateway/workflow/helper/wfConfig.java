@@ -3,22 +3,32 @@ package springcloud.springcloudgateway.workflow.helper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+/*
+ * 2025/4/1
+ * 读取Yaml文件环境变量
+ */
 @Component
 public class wfConfig {
 
+    //peer配置文件路径
     @Value(value= "${workflow.fabric.peersConfigPath}")
     private String peersConfigPath;
+    //orderer配置文件路径
     @Value(value= "${workflow.fabric.orderersConfigPath}")
     private String orderersConfigPath;
-
+    //flush时间间隔
     @Value(value = "${workflow.flushTimeInterval}")
     private long flushTimeInterval;
+    //不记得了，应该是前期的某个方案弃用了
     @Value(value = "${workflow.checkResultTimeInterval}")
     private long checkResultTimeInterval;
+    //不记得了，应该是前期某个方案弃用了
     @Value(value = "${workflow.checkResultRounds}")
     private int checkResultRounds;
+    //工作流引擎服务的端口
     @Value(value = "${workflow.activitiPort}")
     private String workflowPort;
+    //后面基本都是fabric需要用到的配置
     @Value(value = "${workflow.fabric.username}")
     private String userName;
     @Value(value = "${workflow.fabric.mspid}")
@@ -27,29 +37,23 @@ public class wfConfig {
     private String keyPath;
     @Value(value = "${workflow.fabric.crtpath}")
     private String crtPath;
-    //
     @Value(value = "${workflow.fabric.peertlspath}")
     private String peerTlsPath;
-    //
     @Value(value = "${workflow.fabric.peername}")
     private String peerName;
     @Value(value = "${workflow.fabric.peerkeypath}")
     private String peerKeyPath;
     @Value(value = "${workflow.fabric.peercrtpath}")
     private String peerCrtPath;
-    //
     @Value(value = "${workflow.fabric.peeraddr}")
     private String peerAddr;
-    //
     @Value(value = "${workflow.fabric.orderername}")
     private String ordererName;
-    //
     @Value(value = "${workflow.fabric.ordereraddr}")
     private String ordererAddr;
-    //
     @Value(value = "${workflow.fabric.orderertlspath}")
     private String ordererTlsPath;
-    //
+    //true表示测试模式，数据会通过服务调用的方式推到测试代码测，false表示正常运行模式
     @Value(value= "${workflow.fabric.autotest}")
     private boolean isTest;
 

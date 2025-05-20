@@ -2,7 +2,9 @@ package com.wq.wfEngine.entity;
 
 import com.alibaba.fastjson.JSON;
 import java.util.List;
-
+/*
+ * 都是学姐之前的代码
+ */
 public class InsRet {
     String taskList;
     String state;

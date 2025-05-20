@@ -1,5 +1,7 @@
 package com.wq.wfEngine.pojo;
-
+/*
+ * 都是学姐之前的代码
+ */
 public class flowNode {
     private String nextNode;
     private String key;

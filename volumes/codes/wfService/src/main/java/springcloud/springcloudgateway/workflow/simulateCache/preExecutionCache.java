@@ -11,6 +11,10 @@ import org.springframework.stereotype.Component;
 
 import springcloud.springcloudgateway.workflow.helper.wfConfig;
 
+/**
+ * 2025/4/7
+ * 缓存deploy,instance,complete的工作流引擎模拟执行结果，隔一段时间统一上链提高性能
+ */
 @Component
 public class preExecutionCache {
     private volatile Long lastFlushTime=0L;
@@ -22,7 +26,7 @@ public class preExecutionCache {
     private volatile int count=0;
 
 
-
+    //缓存模拟执行结果
     public void putPreDataToCache(workflowResponse workflowResponse,String Oid) {
         synchronized (preResultCache) {
             preResultCache.put(Oid,workflowResponse);
@@ -36,21 +40,20 @@ public class preExecutionCache {
         }
     }
 
-    
+    //最近一次flush时间
     public Long getLastFlushTime() {
         return lastFlushTime;
     }
 
-
+    //设置最新flush时间
     public void setLastFlushTime(Long lastFlushTime) {
         this.lastFlushTime = lastFlushTime;
     }
 
 
-    //深拷贝需要上链的内容，并返回上链数据和他对应的Oids
+    //获得已缓存的模拟执行结果，并清空缓存
     public Map<String,workflowResponse> getPreDatas() {
         Map<String,workflowResponse> preDatas=new HashMap<String,workflowResponse>();
-        //将需要上链的数据进行深拷贝并返回，防止长期占用锁
         synchronized (preResultCache) {
             preDatas.putAll(preResultCache);
             preResultCache.clear();
@@ -66,15 +69,17 @@ public class preExecutionCache {
     //     }
     // }
 
+    //缓存是否为空
     private boolean isPreDatasCacheEmpty() {
         synchronized (preResultCache) {
             return preResultCache.isEmpty();
         }
     }
 
-    //判定是否进行flush,距离上一次flush时间的间隔和preDataCache不为空
+    //判定是否进行flush
     public boolean isNeedFlush() {
         Long now=System.currentTimeMillis();
+         //如果 现在时间 减去 最近一次flush时间的间隔大于等于设置的flush间隔时间 且缓存不为空 则返回true 表示需要flush
         if (now-lastFlushTime>=wfConfig.getFlushTimeInterval()&&(!isPreDatasCacheEmpty())) {
             return true;
         }

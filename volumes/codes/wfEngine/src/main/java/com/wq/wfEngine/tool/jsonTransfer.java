@@ -10,7 +10,9 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-
+/**
+ * @apiNote 封装的Json字符串转换
+ */
 public class jsonTransfer {
     private static ObjectMapper objectMapper=new ObjectMapper();
     private final static Logger logger=LoggerFactory.getLogger(jsonTransfer.class);

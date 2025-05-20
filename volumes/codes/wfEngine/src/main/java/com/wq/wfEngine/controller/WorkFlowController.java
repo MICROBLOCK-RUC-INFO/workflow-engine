@@ -91,6 +91,9 @@ public class WorkFlowController {
     String redisInitStatus=ActivitiUtils.InitRedis();
 
 
+    /**
+     * @apiNote 以服务的形式启动脚本
+     */
     @CrossOrigin
     @RequestMapping(value="/startWorkflowService",method={RequestMethod.POST,RequestMethod.GET})
     @ResponseBody
@@ -100,6 +103,9 @@ public class WorkFlowController {
         return String.format("nacos start %s ,monitor start %s", nacos.isAlive()?"success":"failed",monitor.isAlive()?"success":"failed");
     }
 
+    /**
+     * @apiNote 当时用来测试HASH的性能吧
+     */
     @RequestMapping(value="/testHash", method=RequestMethod.POST)
     @ResponseBody
     public String testHash(@RequestBody String req) throws NoSuchAlgorithmException, UnsupportedEncodingException {
@@ -111,7 +117,7 @@ public class WorkFlowController {
     }
     
     /**
-     * 
+     * @apiNote 任务绑定的模拟执行
      * @param req {oid:,taskName:,value:}
      * @param isUserOrService userTaskBind 为true serviceTaskBind 为false
      * @return
@@ -120,21 +126,26 @@ public class WorkFlowController {
     @RequestMapping(value="/bindSimulate",method={RequestMethod.POST,RequestMethod.GET})
     @ResponseBody
     public String bindSimulate(@RequestBody String req) {
+        //获得请求的json数据
         Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
+        //加锁，模拟执行时加锁。当时做这个应该是为了数据安全。比如同时两个操作对同一个任务进行绑定
         String operationKey=String.valueOf(requestMap.get("oid"))+"-bind-"+String.valueOf(requestMap.get("taskName"));
         if (!cachedData.lockOperation(operationKey)) throw new RuntimeException("this operation has locked");
+        //判断有对应实例和对应任务，同时判断用户任务绑定还是服务任务绑定,   键值对结构<是否有对应实例和任务，服务任务还是用户任务>
         Pair<Boolean,oType> verifyRes= workflowFunction.isUserOrServiceTask(String.valueOf(requestMap.get("oid"))
                                                        , String.valueOf(requestMap.get("taskName")));
+        //没有对应实例或任务，返回报错
         if (!verifyRes.getLeft()) throw new RuntimeException(String.format("This instance:%s is not in the process or no this task:%s", 
                                                         String.valueOf(requestMap.get("oid")), String.valueOf(requestMap.get("taskName"))));
-        
+
         operation o=new operationBuilder().setType(verifyRes.getRight())
                                           .setParams(requestMap)
                                           .build();
+        //返回模拟执行结果
         return workflowFunction.commonSimulate(o);
     }
     /**
-     * 
+     * @apiNote 任务绑定的flush
      * @param req  {oid=,taskName=,oldValue=,newValue=,opType=taskBind}
      * @return
      */
@@ -143,23 +154,32 @@ public class WorkFlowController {
     @RequestMapping(value="/bindFlush",method={RequestMethod.POST,RequestMethod.GET})
     @ResponseBody
     public String bindFlush(@RequestBody String req) {
+        //获得请求的json数据
         Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
         String operationKey=String.valueOf(requestMap.get("oid"))+"-bind-"+String.valueOf(requestMap.get("taskName"));
+         //判断有对应实例和对应任务，同时判断用户任务绑定还是服务任务绑定,   键值对结构<是否有对应实例和任务，服务任务还是用户任务>
         Pair<Boolean,oType> verifyRes= workflowFunction.isUserOrServiceTask(String.valueOf(requestMap.get("oid"))
                                                        , String.valueOf(requestMap.get("taskName")));
+        //获得taskId,因为redis里的存储数据的Key,是用的entity类型+对应id拼接的，所以如果修改用户任务数据时需要
         String taskId=cachedData.getTaskId(String.valueOf(requestMap.get("oid")), String.valueOf(requestMap.get("taskName")));
         if (taskId!=null) requestMap.put("taskId",taskId);
+        //没有对应实例或任务，返回报错
         if (!verifyRes.getLeft()) throw new RuntimeException(String.format("This instance:%s is not in the process or no this task:%s", 
                                                         String.valueOf(requestMap.get("oid")), String.valueOf(requestMap.get("taskName"))));
         operation o=new operationBuilder().setType(verifyRes.getRight())
                                           .setParams(requestMap)
                                           .build();
+        //flush
         boolean res=workflowFunction.commonFlush(o);
+        //释放锁
         cachedData.releaseOperationLock(operationKey);
         if (res) return "ok";
         else throw new RuntimeException("commonFlush Error");
     }
 
+    /**
+     * @apiNote 用户注册，这个好像没分模拟执行和flush两部分来做
+     */
     @RequestMapping(value="/register", method=RequestMethod.POST)
     @ResponseBody
     public String register(@RequestBody String req) {
@@ -170,6 +190,9 @@ public class WorkFlowController {
         else throw new RuntimeException("register Error");
     }
 
+    /**
+     * @apiNote 服务注册验证，这里应该是验证签名
+     */
     @RequestMapping(value="/verifyServiceRegister", method=RequestMethod.POST)
     @ResponseBody
     public String verifyServiceRegister(@RequestBody String req) {
@@ -180,6 +203,9 @@ public class WorkFlowController {
         else throw new RuntimeException("serviceRegister Error");
     }
     
+    /**
+     * @apiNote 服务绑定验证，应该也是验证签名
+     */
     @RequestMapping(value="/verifyServiceBind", method=RequestMethod.POST)
     @ResponseBody
     public String verifyServiceBind(@RequestBody String req) {
@@ -199,7 +225,9 @@ public class WorkFlowController {
         else throw new RuntimeException("serviceBind Error");
     }
     
-
+    /**
+     * @apiNote 下载所有的BPMN文档
+     */
     @CrossOrigin
     @RequestMapping(value = "/downloadBpmn", method = {RequestMethod.GET,RequestMethod.POST})
     @ResponseBody
@@ -219,6 +247,9 @@ public class WorkFlowController {
         return "hello";
     }
 
+    /**
+     * @apiNote 这个不用管，很古早的测试代码用的
+     */
     @CrossOrigin
     @RequestMapping(value = "/testErrorBoundaryEventMap", method = {RequestMethod.GET,RequestMethod.POST})
     @ResponseBody
@@ -266,6 +297,9 @@ public class WorkFlowController {
         return JSON.toJSONString(deploymentInfo);
     }
 
+    /**
+     * @apiNote 根据oid查询当前待执行用户任务
+     */
     @CrossOrigin
     @RequestMapping(value="/queryStatusByOid/{oid}")
     @ResponseBody String queryStatusByOid(@PathVariable String oid) {
@@ -273,6 +307,9 @@ public class WorkFlowController {
         return jsonTransfer.toJsonString(cachedData.getCurrentTaskByOid(oid));
     }
     
+    /**
+     * @apiNote 根据deploymentName查询当前待执行用户任务
+     */
     @CrossOrigin
     @RequestMapping(value="/queryStatusByDeploymentName/{deploymentName}")
     @ResponseBody String queryStatusByDeploymentName(@PathVariable String deploymentName) throws IOException {
@@ -280,6 +317,9 @@ public class WorkFlowController {
         //return JSON.toJSONString(cachedData.getWorkflowStatusByDeploymentName(deploymentName,false));
     }
 
+    /**
+     * @apiNote 这个应该没用了，应该也是很古早的测试什么东西的代码
+     */
     @CrossOrigin
     @RequestMapping(value="/testError")
     @ResponseBody String testError() {
@@ -314,7 +354,7 @@ public class WorkFlowController {
         return JSON.toJSONString(res);
     }
 
-    // 测试
+    // 这个是当时为了方便看redis中数据的Key值和其他属性的映射
     @RequestMapping(value = "/test", method = {RequestMethod.POST,RequestMethod.GET})
     @ResponseBody
     public String test() {
@@ -330,20 +370,27 @@ public class WorkFlowController {
         return entityFieldMap.look();
     }
 
+    /**
+     * @apiNote 这应该也是智慧城市用的，根据oid查询需要的输入
+     */
     @CrossOrigin
     @RequestMapping(value="/queryInputByOid/{oid}")
     @ResponseBody String queryInputByOid(@PathVariable String oid) {
         return JSON.toJSONString(cachedData.getWorkflowStatusByOid(oid));
     }
 
-
+    /**
+     * @apiNote 这个是异常处理，服务内部发生异常，服务调用侧是无法感知的。这段就是将所有RuntimeException信息,返回给服务的调用侧，code是500
+     */
     @ExceptionHandler(value = RuntimeException.class) 
     public ResponseEntity<String> defaultErrorHandler(HttpServletRequest req, Exception e) throws Exception {
         //Map<String,Object> map=new HashMap<>();
         return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-
+    /**
+     * @apiNote deploy的模拟执行
+     */
     @CrossOrigin
     @RequestMapping(value = "/wfDeploy", method = RequestMethod.POST)
     @ResponseBody
@@ -363,13 +410,18 @@ public class WorkFlowController {
             strs[1]=String.valueOf(sigs.get(i).get("signature"));
             list.add(strs);
         }
+        //验证签名
         boolean res=workflowContext.getUserTaskBindHandler().verifies(fileContent, list,deploymentName,true);
         if (!res) throw new RuntimeException("deploy signature验证失败");
         //System.out.println("fileName:"+fileName);
         //System.out.println("fileContent:"+fileContent);
+        //返回模拟执行结果
         return workflowFunction.deploy(deploymentName, fileContent);
     }
 
+    /**
+     * @apiNote instance的模拟执行
+     */
     @CrossOrigin
     @RequestMapping(value = "/wfInstance/{Oid}",method = RequestMethod.POST)
     @ResponseBody
@@ -391,6 +443,9 @@ public class WorkFlowController {
         return workflowFunction.instance(deploymentName, Oid,businessData,null,serviceTaskResultJson);
     }
 
+    /**
+     * @apiNote complete的模拟执行
+     */
     @CrossOrigin
     @RequestMapping(value = "/wfComplete/{Oid}",method = RequestMethod.POST)
     @ResponseBody
@@ -412,7 +467,9 @@ public class WorkFlowController {
         return workflowFunction.complete(Oid, taskName, processData, businessData,user,serviceTaskResultJson);
     }
 
-
+    /**
+     * @apiNote flush
+     */
     @CrossOrigin
     @RequestMapping(value = "/flush",method = RequestMethod.POST)
     @ResponseBody
@@ -423,6 +480,10 @@ public class WorkFlowController {
         return "ok";
     }
 
+    /*
+     * 下面的应该都没用，是之前的代码了
+     */
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @CrossOrigin
     @RequestMapping(value = "/testwfDeploy", method = RequestMethod.POST)

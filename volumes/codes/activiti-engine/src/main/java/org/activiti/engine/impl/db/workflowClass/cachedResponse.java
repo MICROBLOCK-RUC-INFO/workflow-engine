@@ -11,7 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
+/**
+ * @apiNote 跟workflowResponse有点类似，当然这一块处理的有点冗余
+ */
 public class cachedResponse {
     private static final long serialVersionUID = 1L;
     private String Oid;

@@ -69,27 +69,38 @@ import springcloud.springcloudgateway.workflow.tools.keyCombination;
 import springcloud.springcloudgateway.workflow.tools.distributedLock.distributedLock;
 
 /**
- * @apiNote 其实wfEngine与wfService的代码是可以合并的，但是要考虑依赖的版本兼容问题
+ * 2025/4/30
+ * @apiNote 基本所有封装的功能集成在这个类里，
+ * 其实wfEngine与wfService的代码是可以合并的，但是要考虑依赖的版本兼容问题
  */
 
 @Service
 public class wfEngine {
+    //fabircClient
     @Resource
     workflowFabric workflowFabric;
+    //配置
     @Resource
     wfConfig wfConfig;
+    //模拟执行结果缓存，下面两个都是
     @Resource
     preExecutionCache preExecutionCache;
     @Resource
     commonUseSimulateCache commonUseSimulateCache;
+   //线程池，下面两个都是
     @Resource
     flushThreadPool flushThreadPool;
     @Resource
     activitiChangeExecutor activitiChangeExecutor;
+    //大包计数
     public static int packageCounts=0;
+    //大包计数的锁对象
     private static Integer packageCountsMutex=-1;
+    //Transaction计数
     public static int transactionCounts=0;
+    //Transaction计数的锁对象
     private static Integer transactionCountMutex=-1;
+    //定义一些常量
     public final String instance="instance";
     public final String complete="complete";
     public final String deploy="deploy";
@@ -102,31 +113,45 @@ public class wfEngine {
     } 
 
     private Map<queryType,String> queryRoutes=new HashMap<queryType,String>(){{
+        //查询已Deploy的BPMN
         put(queryType.deployments,"/wfEngine/queryDeployment");
+        //根据部署名查询对应的BPMN
         put(queryType.deploymentByName,"/wfEngine/queryDeploymentByName");
+        //根据部署名查询已有实例的状态
         put(queryType.statusByDeploymentName,"/wfEngine/queryStatusByDeploymentName/");
+        //根据Oid查询已有实例的状态
         put(queryType.statusByOid,"/wfEngine/queryStatusByOid/");
     }};
 
-    //不需要参数的查询
+    /**
+     * @apiNote 不需要任何参数的查询，根据QueryType执行
+     */
     public String query(queryType type) throws InterruptedException, ExecutionException {
+        //获得工作流服务的端口
         String port=wfConfig.getWorkflowPort();
         List<String> querys=new LinkedList<String>();
+        //获得各节点IP
         Iterator<String> peerIps= workflowFabric.getPeersIp(channelName).iterator();
         StringBuilder sb=new StringBuilder();
         String route=queryRoutes.get(type);
+        //拼URL
         while (peerIps.hasNext()) {
             sb.append("http://").append(peerIps.next()).append(':')
               .append(port).append(route);
             querys.add(sb.toString());
             sb.setLength(0);
         }
+        //一次性查询
         List<Future<SimpleHttpResponse>> futures=httpUtil.mutilGet(querys);
+        //比较各节点查询结果
         Pair<Boolean,String> compareResult= compareResponse(futures);
+        //返回结果
         return compareResult.getValue();
     }
 
-    //单一值查询
+    /**
+     * @apiNote 单一值查询，代码跟上一个基本一致，或许可以更优美一点，但是能用就不用改
+     */
     public String query(String value,queryType type) throws InterruptedException, ExecutionException {
         String port=wfConfig.getWorkflowPort();
         List<String> querys=new LinkedList<String>();
@@ -145,43 +170,69 @@ public class wfEngine {
         return compareResult.getValue();
     }
 
+    /**
+     * @apiNote 校验服务动态绑定的输入数据
+     */
     public String verifyServiceDynamicBindInput(String serviceName,String httpMethod,String route,String input,String serviceGroup,
                                                 String headers,String output) {
         Map<String,Object> serviceInfo=new HashMap<String,Object>(){{
             put("serviceName",serviceName);
+            //验证httpMethod
             put("httpMethod",verifyHttpMethod(httpMethod));
             put("route",route);
         }};
+        //验证服务是否注册
         if (!isRegisterd(serviceName, serviceGroup)) throw new RuntimeException(String.format("serviceName:%s,groupName:%s,not registered", serviceName,serviceGroup));
+        //如果serviceGroup不为""
         if (!serviceGroup.equals("")) serviceInfo.put("serviceGroup",serviceGroup);
+        //校验input
         if (!input.equals("")) serviceInfo.put("input",verifyInput(input));
+        //校验headers
         if (!headers.equals("")) serviceInfo.put("headers",verifyHeaders(headers));
+        //校验output
         if (!output.equals("")) serviceInfo.put("output",verifyOutput(output));
+        //校验通过，返回serviceInfo的json字符串
         return jsonTransfer.mapToJsonString(serviceInfo);
     }
 
+    /**
+     * @apiNote 校验HTTP调用方法
+     */
     private String verifyHttpMethod(String httpMethod) {
         httpMethod=httpMethod.toUpperCase();
         if (!httpMethods.contains(httpMethod)) throw new RuntimeException(String.format("httpMethod: %s not supported",httpMethod));
         else return httpMethod;
     }
 
+    /**
+     * @apiNote 校验input是否是Map的Json字符串
+     */
     private String verifyInput(String input) {
         if (jsonTransfer.jsonToMap(input)==null) throw new RuntimeException(String.format("input: %s is not json", input));
         return input;
     }
 
+    /**
+     * @apiNote 校验Headers是否是Map的Json字符串
+     */
     private String verifyHeaders(String headers) {
         if (jsonTransfer.jsonToMap(headers)==null) throw new RuntimeException(String.format("headers: %s is not json", headers));
         return headers;
     }
 
+    /**
+     * @apiNote 校验output是否是Map的Json字符串
+     */
     private String verifyOutput(String output) {
         if (jsonTransfer.jsonToMap(output)==null) throw new RuntimeException(String.format("output: %s is not json",output));
         return output;
     }
 
-
+    /**
+     * @apiNote 这个忘记是干啥用的了。应该是用来测试链码性能的
+     * 当时写了一版简单的智能合约版工作流引擎 emm,突然发现智能合约的源代码忘记保存了。
+     * 打包进Peer二进制文件了。所以这个二进制文件如果更换了，这个应该用不了了。
+     */
     public String testSmartContract(String requestBody,String fcn) {
         try {
             if (fcn.equals(deploy)) {
@@ -227,8 +278,14 @@ public class wfEngine {
         }
     }
 
-    //统计大包的数量与交易的总数
+    /**
+     * @apiNote 大包和Transaction计数
+     */
     private void packageAndTransactionCount(int transactionSize) {
+        /*
+        因为收集大包上链执行flush是由线程池来做的，同时这两个线程的执行需要一定的时间，
+        所以高吞吐量下，可能存在两个线程同时工作，所以需要加锁
+        */
         synchronized (transactionCountMutex) {
             transactionCounts+=transactionSize;
         }
@@ -237,8 +294,11 @@ public class wfEngine {
         }
     }
 
-    //因为这个是测试跑完之后取值，所以没有加锁
+    /**
+     * @apiNote 获取最终的大包和Transaction数值
+     */
     public List<Integer> getPackageAndTransactionCount() {
+        //因为这个是测试跑完之后取值，所以没有加锁，不存在竞争
         List<Integer> list=new ArrayList<Integer>() {{
             add(packageCounts);
             add(transactionCounts);
@@ -248,6 +308,9 @@ public class wfEngine {
         return list;
     }
 
+    /**
+     * @apiNote 我看了一下，没用了。忘记为什么没用了
+     */
     private List<SimpleHttpResponse> flushbroadCast(String body) throws IOException, InterruptedException, ExecutionException {
         List<String> allPeerIps=workflowFabric.getPeersIp(channelName);
         String port=wfConfig.getWorkflowPort();
@@ -267,12 +330,17 @@ public class wfEngine {
         return responses;
     }
     
-    //just for use
+    /**
+     * @apiNote  根据部署名删除已部署的BPMN
+     */
     public String deleteDeploymentByName(String request) throws InterruptedException, ExecutionException {
         Map<String,Object> responseMap=new HashMap<>();
+        //获得节点IP
         List<String> allPeerIps=workflowFabric.getPeersIp(channelName);
+        //获得工作流引擎服务的端口
         String port=wfConfig.getWorkflowPort();
         if (allPeerIps==null) {
+            //节点IP为空，返回报错
             responseMap.put("code",500);
             responseMap.put("body","delete error,cause by get peer ip failed");
             return jsonTransfer.mapToJsonString(responseMap);
@@ -280,15 +348,19 @@ public class wfEngine {
         List<Future<SimpleHttpResponse>> futures=new LinkedList<>();
         StringBuilder url=new StringBuilder().append("http://");
         for (String ip:allPeerIps) {
+            //给每个节点工作流引擎发送请求
             url.append(ip).append(':').append(port).append("/wfEngine").append("/deleteDeployment");
             futures.add(httpUtil.doPost(url.toString(), request));
             url.setLength(7);
         }
         StringBuilder responseStringBuilder=new StringBuilder();
+        //true表示各节点执行成功，反之false
         boolean allOk=true;
+        //执行失败的返回字符串前缀
         responseStringBuilder.append("delete error,cause there are some peers execute error,their are:");
         for (int i=0;i<futures.size();i++) {
             SimpleHttpResponse response=futures.get(i).get();
+            //对执行结果进行判断
             if (response.getCode()!=200||!response.getBodyText().equals("ok")) {
                 allOk=false;
                 responseStringBuilder.append(allPeerIps.stream().skip(i).findFirst().get()).append(',');
@@ -304,8 +376,9 @@ public class wfEngine {
         return jsonTransfer.mapToJsonString(responseMap);
     }
 
-    
-    //广播所有节点，并回收所有模拟执行返回结果 bodyMap需要传输的数据，method方法
+    /**
+     * @apiNote 将请求发给所有节点的工作流引擎服务，收集模拟执行返回结果 
+     */
     private Pair<workflowResponse, Pair<String,List<SimpleHttpResponse>>> broadCast(Map<String,Object> bodyMap,String fcn,String Oid) throws IOException, InterruptedException, ExecutionException {
         List<String> allPeerIps=workflowFabric.getPeersIp(channelName);
         String port=wfConfig.getWorkflowPort();
@@ -324,14 +397,17 @@ public class wfEngine {
             } else {
                 url="http://localhost:"+port+"/wfEngine/wfDeploy";
             }
+            //本节点先执行一遍，因为想服务任务只执行一次
             Future<SimpleHttpResponse> future=httpUtil.doPost(url, jsonTransfer.mapToJsonString(bodyMap));
             SimpleHttpResponse response=future.get();
             if (response.getCode()!=200) {
+                //如果本节点执行失败，以Pair形式返回结果，<null，<错误信息,null>>
                 return Pair.of(null, Pair.of(response.getBodyText(), null));
             }
             String localSimulation=future.get().getBodyText();
             localWorkflowResponse=(workflowResponse)deCoder.streamToEntity(localSimulation);
             //pair=Pair.of(localWorkflowResponse, null);
+            //把服务任务的执行结果放入发给其他节点的请求体中
             bodyMap.put("serviceTaskResultJson",localWorkflowResponse.getServiceTaskResultJson());
             //System.out.println(bodyMap.toString());
         }
@@ -356,6 +432,7 @@ public class wfEngine {
             }
             urls.add(url);
         }
+        //其他节点执行
         List<Future<SimpleHttpResponse>> futures=httpUtil.multiPost(urls.iterator(), body);
         List<SimpleHttpResponse> responses=new LinkedList<>();
         for (int i=0;i<futures.size();i++) {
@@ -365,12 +442,16 @@ public class wfEngine {
         //     SimpleHttpResponse response=future.get();
         //     responses.add(response);
         // }
+        //以Pair形式返回结果，<本节点执行结果，<null,其他节点执行结果>>
         return Pair.of(localWorkflowResponse, Pair.of(null,responses));
     }
-    //模拟执行
+    
+    /**
+     * @apiNote 模拟执行
+     */
     private String workflowSimulatedExecute(Map<String,Object> bodyMap,String fcn,String Oid) throws IOException, InterruptedException, ExecutionException {
         long startTime=System.currentTimeMillis();
-        //广播
+        //各节点执行请求
         Pair<workflowResponse, Pair<String,List<SimpleHttpResponse>>> pair=broadCast(bodyMap, fcn, Oid);
         if (pair==null) {
             return "fcnError or get peers ip error";
@@ -385,6 +466,7 @@ public class wfEngine {
         String res="success";
         List<String> errorText=new ArrayList<>();
         int count=1;
+        //对执行结果进行校验
         for (int i=0;i<responses.size();i++) {
             SimpleHttpResponse response=responses.get(i);
             if (response.getCode()!=200) {
@@ -422,25 +504,31 @@ public class wfEngine {
             allOk=false;
             res="相同的结果少于等于2/3,errorTextList:"+errorText.toString();
         }
-        //将模拟执行结果收集延迟上链
         if (allOk) {
-            //测试用
+            //测试时间打点
             pair.getLeft().setStartTime(startTime);
             pair.getLeft().setSimulationEndTime(System.currentTimeMillis());
+            //将模拟执行结果收集延迟上链
             preExecutionCache.putPreDataToCache(pair.getLeft(), Oid);
         }
         return res;
     }
 
-    //上链加flushdata
+    /**
+     * @apiNote deploy,instance,complete。上链+flush。但是实际这段代码里只有创建一个上链线程，然后交给线程池执行。flush线程是由上链线程创建
+     */
     public void preDatasToBlockChainAndFlush() throws InvalidArgumentException, InterruptedException, IOException, ExecutionException {
+       //检查是否有数据需要上链
         if (!preExecutionCache.isNeedFlush()) return;
-        //得到上链参数args
+        
+        //得到上链数据
         Map<String, workflowResponse> preDatas=preExecutionCache.getPreDatas();
-        //做大包数量及交易总数的统计
+        
+        //大包和Transaction计数
         int mapLength=preDatas.size();
         packageAndTransactionCount(mapLength);
 
+        //拼上链字符串
         ArrayList<String> args=new ArrayList<>();
         StringBuilder oidBuilder=new StringBuilder();
         StringBuilder oidTaskStatusBuilder=new StringBuilder();
@@ -453,19 +541,29 @@ public class wfEngine {
         oidTaskStatusBuilder.deleteCharAt(oidTaskStatusBuilder.length()-1);
         
 
-        //将值一次加入args,依次为0-oid,1-fromTask,2-toTask,3-isDeploy,4-deploymentName
+        //上传IPFS，获得Hash
         String valueHash=httpUtil.uploadFile(oidTaskStatusBuilder.toString(), channelName);
+        
+        //fabric键值对的Key
         args.add(oidBuilder.toString());
+        
+        //fabric键值对的Value
         args.add(valueHash);
 
-        //拿到需要执行flush的数据，然后创建一个flushRunnable对象丢给线程池
+       /*
+        * 创建上链线程交给，线程池执行
+        */
         upLinkRunnable flushThread=new upLinkRunnable(workflowFabric, channelName, chaincodeName, "flush", args, preDatas,activitiChangeExecutor,wfConfig.isTest());
         flushThreadPool.flush(flushThread);
         logger.info("get UpLink data success");
+        //设置最近一次上链时间
         preExecutionCache.setLastFlushTime(System.currentTimeMillis());
     }
 
-    //list[0]是oid,list[1]是执行结果
+    /**
+     * @apiNote deploy,instance,complete,包括数据的处理和请求模拟执行
+     * @return list[0]是oid,list[1]是执行结果
+     */
     public List<String> handleWorkflowRequest(Map<String,Object> requestMap,String fcn) throws IOException, InterruptedException, ExecutionException{
         //String fcn=String.valueOf(requestMap.get("fcn"));
         String Oid=null;
@@ -474,11 +572,14 @@ public class wfEngine {
         list.add(Oid);
         list.add(null);
         if (fcn.equals(deploy)) {
+            //deploy处理
             String deploymentName=String.valueOf(requestMap.get("deploymentName"));
             if (deploymentName.length()<5||!deploymentName.substring(deploymentName.length()-5, deploymentName.length()).equals(".bpmn")) {
+                //这是判断名字是否以.bpmn结尾，没有则加上，不然activiti在BPMN建模会出错
                 deploymentName=deploymentName+".bpmn";
             }
             Oid=deploymentName;
+            //BPMN文件内容
             String fileContent=String.valueOf(requestMap.get("fileContent"));
 
             Map<String,Object> temp=new HashMap<String,Object>() {{
@@ -487,8 +588,10 @@ public class wfEngine {
             temp.put("deploymentName",deploymentName);
             temp.put("signatures",requestMap.get("signatures"));
             bodyMap=temp;
+            //设置oid
             list.set(0,Oid);
         } else if (fcn.equals(instance)) {
+            //instance处理
             String deploymentName=String.valueOf(requestMap.get("deploymentName"));
             String processData=String.valueOf(requestMap.get("processData"));
             String businessData=String.valueOf(requestMap.get("businessData"));
@@ -503,10 +606,13 @@ public class wfEngine {
                 //没有就是默认所有人都可以执行userTask
                 temp.put("staticAllocationTable",String.valueOf(requestMap.get("staticAllocationTable")));
             }
+            //deploymentName+"@"+UUID 唯一标识
             Oid=deploymentName+"@"+UUID.randomUUID().toString();
             bodyMap=temp;
+             //设置oid
             list.set(0,Oid); 
         } else if (fcn.equals(complete)) {
+            //complete处理
             String taskName=String.valueOf(requestMap.get("taskName"));
             String processData=String.valueOf(requestMap.get("processData"));
             String businessData=String.valueOf(requestMap.get("businessData"));
@@ -519,8 +625,10 @@ public class wfEngine {
                 put("user",user);
             }};
             bodyMap=temp;
+             //设置oid
             list.set(0,Oid);
         } else {
+            //如果不是deploy,instance,complete中任意一个，报错
             list.set(1,"fcn参数错误,必须为deploy,instance或complete");
         }
         if (bodyMap==null||Oid==null) {
@@ -531,13 +639,19 @@ public class wfEngine {
                 list.set(1,"未检查到Oid参数");
             }
         } else {
+            //将list[1]设置为请求模拟执行结果
             list.set(1,handleWorkflowRequest(bodyMap, fcn, Oid));
         }
         return list;
     }
 
+    /**
+     * @apiNote deploy,instance,complete请求执行
+     */
     private String handleWorkflowRequest(Map<String,Object> bodyMap,String fcn,String Oid) throws IOException, InterruptedException, ExecutionException {
+        //模拟执行
         String simulatedRes=workflowSimulatedExecute(bodyMap, fcn, Oid);
+        //如果执行成功返回success,反之返回报错信息
         if (!simulatedRes.equals("success")) {
             return simulatedRes;
             //return "simulateError";
@@ -545,14 +659,26 @@ public class wfEngine {
         return "success";        
     }
 
+    /**
+     * @apiNote 获得块高
+     */
     public long getBlockHeight() throws ProposalException, InvalidArgumentException {
         return workflowFabric.getBlockHeight();
     }
 
+    /**
+     * @apiNote 应该是服务注册，绑定啥的。上链+flush。
+     */
     public void getBindPackageData() {
+        //检查是否有数据需要上链
         if (!commonUseSimulateCache.isBindNeedFlush()) return;
+        
+        //获得缓存的模拟执行结果
         Map<String,String> simulateDatas=commonUseSimulateCache.getBindSimulateDatas();
+        
+        //时间打点
         commonUseSimulateCache.setBindLastFlushTime(System.currentTimeMillis());
+
         List<String> oids=new ArrayList<>(),wrSets=new ArrayList<>();
         simulateDatas.entrySet().stream().forEach(entry -> {
                                                             oids.add(entry.getKey());
@@ -562,10 +688,15 @@ public class wfEngine {
             add(oids);
             add(wrSets);
         }};
+
+        //创建上链线程，交给线程池执行
         flushThreadPool.flush(new commonUseUpLinkRunnable(workflowFabric, channelName, chaincodeName, "flush", args, activitiChangeExecutor));
         logger.info("get CommonUse UpLink data success");
     }
 
+    /**
+     * @apiNote 动态服务绑定，各节点验证签名
+     */
     public Pair<Boolean, String> bindVerify(String json) throws InterruptedException, ExecutionException {
         Iterator<String> peerIps= workflowFabric.getPeersIp(channelName).iterator();
         String activitiPort=wfConfig.getWorkflowPort();
@@ -577,13 +708,20 @@ public class wfEngine {
               verifyUrls.add(sb.toString());
               sb.setLength(0);
         }
+        //各节点执行验证请求
         List<Future<SimpleHttpResponse>> verifyFutures=httpUtil.multiPost(verifyUrls.iterator(), json);
+        
+        //比较返回结果
         Pair<Boolean,String> verifyPair=compareResponse(verifyFutures);
-        //比较背书的结果失败，返回false
+        
+        //成功返回true,反之返回false
         if (!verifyPair.getLeft().booleanValue())  return verifyPair;
         else return Pair.of(true, "ok");
     }
 
+    /**
+     * @apiNote 服务注册
+     */
     public String handleServiceRegisty(String provider,String serviceMetaData,String signature) throws InterruptedException, ExecutionException {
         Iterator<String> peerIps= workflowFabric.getPeersIp(channelName).iterator();
         String activitiPort=wfConfig.getWorkflowPort();
@@ -600,19 +738,27 @@ public class wfEngine {
             put("data",serviceMetaData);
             put("signature",signature);
         }};
+        //这里应该是各节点验证签名
         List<Future<SimpleHttpResponse>> verifyFutures=httpUtil.multiPost(verifyUrls.iterator(), jsonTransfer.mapToJsonString(data));
+        
+        //比较返回结果，报错则返回报错信息
         Pair<Boolean,String> verifyPair=compareResponse(verifyFutures);
-        //比较背书的结果失败，返回false
         if (!verifyPair.getLeft().booleanValue())  return verifyPair.getRight();
+        
         Map<String,Object> serviceMetaDataMap=jsonTransfer.jsonToMap(serviceMetaData);
         String serviceIp=String.valueOf(serviceMetaDataMap.get("ip"));
         String servicePort=String.valueOf(serviceMetaDataMap.get("port"));
+
+        //从注册元数据中，验证注册服务的可用性，IP+PORT能否访问
         if (!isPortOpen(serviceIp, Integer.valueOf(servicePort).intValue(), 1000)) {
             throw new RuntimeException(String.format("ip %s,port %s can not connect", serviceIp,servicePort));
         }
+
+        //拼注册链服务注册的URL
         StringBuilder nacosUrl=new StringBuilder();
         peerIps= workflowFabric.getPeersIp(channelName).iterator();
         while (peerIps.hasNext()) {
+            //轮询所有节点，直到有一个节点的Nacos可以访问。拼接Nacos服务注册的Url
             String ip=peerIps.next();
             if(httpUtil.isPortOpen(ip, 8848, 500)) {
                 nacosUrl.append("http://").append(ip).append(":8848/nacos/v1/ns/instance?")
@@ -628,11 +774,15 @@ public class wfEngine {
                 break;
             }
         }
+        //如果所有节点Nacos均不可访问，返回报错。反之执行注册服务
         if (nacosUrl.length()==0) throw new RuntimeException("所有nacos都没有启动");
         else return httpUtil.doPost(nacosUrl.toString(), "").get().getBodyText(); 
 
     }
 
+    /**
+     * @apiNote 查询对应的服务是否已注册
+     */
     private boolean isRegisterd(String serviceName,String groupName) {
         try {
             if (groupName.equals("")) {
@@ -655,6 +805,10 @@ public class wfEngine {
         }
     }
 
+    /**
+     * @apiNote 检查host+port是否开放。之前好像看到一个说法这种写法可能存在socket 不能close的可能，比如在connect的时候出错，从而导致内存泄漏
+     * 最好用try with resources的写法。大概是try (Socket sockket=new Socket()) {}.
+     */
     private boolean isPortOpen(String host, int port, int timeout) {
         try {
             Socket socket = new Socket();
@@ -666,19 +820,26 @@ public class wfEngine {
         }
     }
 
+    /**
+     * @apiNote 用户注册
+     */
     public Pair<Boolean, String> handleRegister(String name,String oldPrivateKey) throws CryptoException, IllegalAccessException, InstantiationException, ClassNotFoundException, InvalidArgumentException, NoSuchMethodException, InvocationTargetException, InterruptedException, ExecutionException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        //生成公私钥
         KeyPair keyPair= CryptoSuite.Factory.getCryptoSuite().keyGen();
         PrivateKey privateKey=keyPair.getPrivate();
         PublicKey publicKey=keyPair.getPublic();
         String priKey=Base64.getEncoder().encodeToString(privateKey.getEncoded());
         String pubKey=Base64.getEncoder().encodeToString(publicKey.getEncoded());
 
+        //如果是第一次注册不需要提供老私钥。如果不是则需要
         Map<String,Object> requestMap=new HashMap<String,Object>(){{
             put("name",name);
             put("privateKey",priKey);
             put("publicKey",pubKey);
             if(oldPrivateKey!="") {put("oldPrivateKey",oldPrivateKey);}
         }};
+        
+        //用户注册执行
         String port=wfConfig.getWorkflowPort();
         List<String> simulateBindUrls=new ArrayList<String>();
         Iterator<String> peerIps= workflowFabric.getPeersIp(channelName).iterator();
@@ -690,9 +851,13 @@ public class wfEngine {
             sb.setLength(0);
         }
         List<Future<SimpleHttpResponse>> simulateFutures=httpUtil.multiPost(simulateBindUrls.iterator(), jsonTransfer.mapToJsonString(requestMap));
+
+        //校验各节点执行结果
         Pair<Boolean,String> simulatePair=compareResponse(simulateFutures);
-        //比较背书的结果失败，返回false
+        //如果执行出错，返回错误信息
         if (!simulatePair.getLeft().booleanValue())  return simulatePair;
+
+        //这里应该是少了上链的一部分，不确定是不是工作流引擎服务那边没适配
         Signature sig=Signature.getInstance("SHA256withECDSA");
         sig.initSign(privateKey);
         sig.update(jsonTransfer.mapToJsonString(requestMap).getBytes());
@@ -798,6 +963,9 @@ public class wfEngine {
         // }
     }
 
+    /**
+     *@apiNote 对比模拟执行结果，只要求错误结果小于1/3即可
+     */
     private Pair<Boolean,String> compareResponse(List<Future<SimpleHttpResponse>> futures) {
         try {
             int length=futures.size(),count=0;

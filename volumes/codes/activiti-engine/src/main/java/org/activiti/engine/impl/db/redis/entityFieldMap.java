@@ -11,10 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 这是一版比较粗糙的设计，因为工作量太大的缘故
  * 现在redis现在采用的键的设计是简化的class+Id,id还是采用之前自增id的逻辑,这是为了节省存储空间
- * 可以考虑更改id的生成逻辑，在每一个类里实现一个idGenerate的方法
- * id的设计结构可以考虑为oid-对象类型-唯一的对象关键字(可以是taskName或者其他,根据不同对象而不同）
- * 然后redis的存储结构可以考虑使用Hash,而不是现在的string结构，oid作为hash的key值，嵌套的hash的key也依次是对象类型和对象的关键字
- * 如果这样，可能需要对activiti的逻辑做大量的修改，这里我还没想太清楚，但是直觉上，这个方法或许能一定程度上解决查询的问题
+ * 用HashMap做了字段映射
  */
 public class entityFieldMap {
     public final static String TASK="Task";

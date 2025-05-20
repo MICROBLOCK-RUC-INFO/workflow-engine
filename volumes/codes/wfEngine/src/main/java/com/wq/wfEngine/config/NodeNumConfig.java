@@ -2,6 +2,9 @@ package com.wq.wfEngine.config;
 
 import java.util.Map;
 
+/**
+ * @apiNote 这个没用了，应该是某个弃用的方案的某个部件
+ */
 public class NodeNumConfig {
     private static int thisNodeNum;
     private static int allNodeNum;

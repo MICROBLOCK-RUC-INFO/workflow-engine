@@ -14,6 +14,7 @@ import java.security.spec.X509EncodedKeySpec;
 import org.springframework.util.Base64Utils;
 
 /**
+ * 这不是我写的
  * 对文件加签、验签工具类
  * 生成私钥：openssl genrsa -out rsa_private_key.pem 1024
  * 私钥还不能直接被使用，需要进行PKCS#8编码：openssl pkcs8 -topk8 -inform PEM -in rsa_private_key.pem -outform PEM -nocrypt

@@ -1,7 +1,9 @@
 package com.wq.wfEngine.entity;
 
 import java.util.HashMap;
-
+/*
+ * 都是学姐之前的代码
+ */
 public class WfOperation {
     String type;
     String name;

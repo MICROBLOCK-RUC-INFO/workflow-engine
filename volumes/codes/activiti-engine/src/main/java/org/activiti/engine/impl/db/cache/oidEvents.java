@@ -8,7 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-/*
+/**
+ * @apiNote 不知道为什么这个字段映射是用这样的方式实现的，具体原因有点忘了
  * 用来缓存oid对应的messageEvent的name与execution
  * 方便通过oid来查找
  * 需要注释：：：：：：

@@ -96,50 +96,74 @@ public class MonitorController implements DataController {
     // @Resource
     // MonitorChannelConfig monitorChannelConfig;
 
-
+    /**
+     * @apiNote 异常处理
+     */
     @ExceptionHandler(value = RuntimeException.class) 
     public ResponseEntity<String> defaultErrorHandler(HttpServletRequest req, Exception e) throws Exception {
         //Map<String,Object> map=new HashMap<>();
         return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-
+    /**
+     * @apiNote 查询所有已部署的BPMN
+     */
     @RequestMapping(value="/queryDeployments")
     public String queryDeployments() throws InterruptedException, ExecutionException {
         return wfEngine.query(queryType.deployments);
     }
 
-    //字符串看着相等，但是应该包含无法打印出来的byte,导致判定不通过，待检查
+    /**
+     * @apiNote 根据deploymentName查询部署的BPMN
+     */
     @RequestMapping(value="/queryDeploymentByName/{deploymentName}")
     public String queryDeploymentByName(@PathVariable String deploymentName) throws InterruptedException, ExecutionException {
         return wfEngine.query(deploymentName, queryType.deploymentByName);
     }
 
+    /**
+     * @apiNote 根据deploymentName查询对应所有实例的状态
+     */
     @RequestMapping(value="/queryStatusByDeploymentName/{deploymentName}")
     public String queryStatusByDeploymentName(@PathVariable String deploymentName) throws InterruptedException, ExecutionException {
         return wfEngine.query(deploymentName, queryType.statusByDeploymentName);
     }
 
+    /**
+     * @apiNote 根据oid查询对应实例的状态
+     */
     @RequestMapping(value="/queryStatusByOid/{oid}")
     public String queryStatusByOid(@PathVariable String oid) throws InterruptedException, ExecutionException {
         return wfEngine.query(oid, queryType.statusByOid);
     }
 
+    /**
+     * @apiNote 这应该是当时用链码实现工作流测试用的
+     */
     @RequestMapping(value="/testSmartContract/{fcn}",method = RequestMethod.POST)
     public String testSmartContract(@RequestBody String req,@PathVariable String fcn) {
         return wfEngine.testSmartContract(req, fcn);
     } 
 
+    /**
+     * @apiNote 获取一定时间内的大包数与Transaction数，统计用的
+     */
     @RequestMapping(value="/getPackageAndTransationCounts",method = RequestMethod.GET) 
     public String getPackageAndTransationCounts() {
         return JSON.toJSONString(wfEngine.getPackageAndTransactionCount());
     }
 
+    /**
+     * @apiNote  根据oid获得执行结果(deploy,instance,complete)，只有当模拟执行正确，上链成功后才能查询到，且查到结果后就删除
+     */
     @RequestMapping(value="/getResponseByOid/{oid}",method = RequestMethod.GET)
     public String getResByOid(@PathVariable String oid) {
         return resForUsers.getSuccessRes(oid);
     }
 
+    /**
+     * @apiNote 跟getResByOid这个功能一样，只是为了适配jmeter，原来那个数据量太大了，jmeter的一些提取器会报错
+     */
     @RequestMapping(value="/getResByOidForTest/{oid}",method = RequestMethod.GET)
     public String getResByOidForTest(@PathVariable String oid) {
         if (resForUsers.isCompleted(oid)) {
@@ -150,16 +174,25 @@ public class MonitorController implements DataController {
         }
     }
 
+    /**
+     * @apiNote 跟getResponseByOid一样，只是针对用户任务和服务任务的绑定
+     */
     @RequestMapping(value="/getBindRes/{oid}/{taskName}",method=RequestMethod.GET)
     public String getBindRes(@PathVariable String oid,@PathVariable String taskName) {
         return commonUseResult.getResult(keyCombination.combine(oid,"bind",taskName));
     }
 
+    /**
+     * @apiNote 根据deploymentName,删除已部署的BPMN
+     */
     @RequestMapping(value = "/deleteDeploymentByName",method = {RequestMethod.GET,RequestMethod.POST})
     public String deleteDeploymentByName(@RequestBody String req) throws InterruptedException, ExecutionException {
         return wfEngine.deleteDeploymentByName(req);
     }
 
+    /**
+     * @apiNote 这个应该是查看已上链完成，但是还没被用户查询结果的实例的oid
+     */
     @RequestMapping(value="testOids",method = RequestMethod.GET)
     public String testOids() {
         Set<String> oids=resForUsers.oids;
@@ -172,6 +205,9 @@ public class MonitorController implements DataController {
         return stringBuilder.toString();
     }
 
+    /**
+     * @apiNote 这个忘记是干啥的了，但是现在应该没用了，可能是很早之前还不会调试的时候写的
+     */
     @RequestMapping(value="testFlush",method = RequestMethod.POST)
     public String testFlush(@RequestBody String req) throws IOException {
         List<String> ips= workflowFabric.getPeersIp("workflowchannel");
@@ -207,6 +243,9 @@ public class MonitorController implements DataController {
         else return "error";
     }
 
+     /**
+     * @apiNote 这个忘记是干啥的了，但是现在应该没用了，可能是很早之前还不会调试的时候写的
+     */
     @RequestMapping(value="testflushOids",method = RequestMethod.GET)
     public String testflushOids() {
         Set<String> oids=resForUsers.flushOidsStrings;
@@ -219,6 +258,9 @@ public class MonitorController implements DataController {
         return stringBuilder.toString();
     }
 
+     /**
+     * @apiNote 这个忘记是干啥的了，但是现在应该没用了，可能是很早之前还不会调试的时候写的
+     */
     @RequestMapping(value="getOids",method = RequestMethod.GET)
     public String getOids() {
         Set<String> oids=resForUsers.successExecuteRes.keySet();
@@ -230,8 +272,8 @@ public class MonitorController implements DataController {
         return stringBuilder.toString();
     }
 
-        /**
-     * @apiNote 根据header的不同转发至不同端口，formData是有文件的
+     /**
+     * @apiNote deploy。根据header不同转发请求，支持APPLICATION_JSON和MULTIPART_FORM_DATA
      * @param req
      * @param resp
      * @throws ServletException
@@ -242,6 +284,7 @@ public class MonitorController implements DataController {
     public void deploy(HttpServletRequest req,HttpServletResponse resp) throws ServletException, IOException {
         String contentType= req.getContentType().toLowerCase();
         logger.info(contentType.toString());
+        //根据数据格式forward到不同路径执行
         if (contentType.contains(ContentType.APPLICATION_JSON.toString().split(";")[0])) {
             req.getRequestDispatcher("/grafana/wfRequest/deploy/json").forward(req, resp);
         } else if (contentType.contains(ContentType.MULTIPART_FORM_DATA.toString().split(";")[0])) {
@@ -249,6 +292,9 @@ public class MonitorController implements DataController {
         }
     }
 
+    /**
+     * @apiNote deploy(APPLICATION_JSON数据格式)
+     */
     @RequestMapping(value= "/wfRequest/deploy/json",method=RequestMethod.POST)
     public Map<String,Object> deployJson(@RequestBody String req) throws IOException, InterruptedException, ExecutionException {
 
@@ -258,6 +304,7 @@ public class MonitorController implements DataController {
         String preRes=list.get(1);
         if (!preRes.equals("success")) {
             if (wfConfig.isTest()) {
+                //如果是测试模式，直接调用测试代码，告知模拟执行出错。
                 httpUtil.doGet("http://10.77.110.222:9988/informResponse/"+URLEncoder.encode(Oid, "UTF-8")+"/simulateError/"+false);
             }
             return new HashMap<String,Object>() {{put("code",500);put("body",preRes);put("Oid",Oid);put("模拟执行结果",false);}};
@@ -266,6 +313,9 @@ public class MonitorController implements DataController {
 
     }
 
+    /**
+     * @apiNote deploy(MULTIPART_FORM_DATA数据格式)
+     */
     @RequestMapping(value= "/wfRequest/deploy/form",method=RequestMethod.POST)
     public Map<String,Object> deployForm(HttpServletRequest request) {
         MultipartHttpServletRequest params=((MultipartHttpServletRequest) request);  
@@ -303,6 +353,7 @@ public class MonitorController implements DataController {
             String preRes=list.get(1);
             if (!preRes.equals("success")) {
                 if (wfConfig.isTest()) {
+                    //如果是测试模式，直接调用测试代码，告知模拟执行出错。
                     httpUtil.doGet("http://10.77.110.222:9988/informResponse/"+URLEncoder.encode(Oid, "UTF-8")+"/simulateError/"+false);
                 }
                 return new HashMap<String,Object>() {{put("code",500);put("body",preRes);put("Oid",Oid);put("模拟执行结果",false);}};
@@ -313,6 +364,9 @@ public class MonitorController implements DataController {
         }
     }
 
+    /**
+     * @apiNote instance
+     */
     @RequestMapping(value="/wfRequest/instance",method=RequestMethod.POST)
     public Map<String,Object> instance(@RequestBody String req) throws IOException, InterruptedException, ExecutionException {
         Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
@@ -321,6 +375,7 @@ public class MonitorController implements DataController {
         String preRes=list.get(1);
         if (!preRes.equals("success")) {
             if (wfConfig.isTest()) {
+                //如果是测试模式，直接调用测试代码，告知模拟执行出错。
                 httpUtil.doGet("http://10.77.110.222:9988/informResponse/"+URLEncoder.encode(Oid, "UTF-8")+"/simulateError/"+false);
             }
             return new HashMap<String,Object>() {{put("code",500);put("body",preRes);put("Oid",Oid);put("模拟执行结果",false);}};
@@ -328,6 +383,9 @@ public class MonitorController implements DataController {
         return new HashMap<String,Object>() {{put("code",200);put("body","等待上链,更改状态");put("Oid",Oid);put("模拟执行结果",true);}};
     }
 
+    /**
+     * @apiNote complete
+     */
     @RequestMapping(value="/wfRequest/complete",method=RequestMethod.POST)
     public Map<String,Object> complete(@RequestBody String req) throws IOException, InterruptedException, ExecutionException {
         Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
@@ -336,6 +394,7 @@ public class MonitorController implements DataController {
         String preRes=list.get(1);
         if (!preRes.equals("success")) {
             if (wfConfig.isTest()) {
+                //如果是测试模式，直接调用测试代码，告知模拟执行出错。
                 httpUtil.doGet("http://10.77.110.222:9988/informResponse/"+URLEncoder.encode(Oid, "UTF-8")+"/simulateError/"+false);
             }
             return new HashMap<String,Object>() {{put("code",500);put("body",preRes);put("Oid",Oid);put("模拟执行结果",false);}};
@@ -344,7 +403,9 @@ public class MonitorController implements DataController {
     
     }
 
-
+    /**
+     * @apiNote 应该没用了
+     */
     @RequestMapping(value="/dynamicBind",method = RequestMethod.POST)
     public String dynaminBind(@RequestBody String req) {
         Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
@@ -366,37 +427,51 @@ public class MonitorController implements DataController {
     //     else return "serviceDynamicBind error";
     // }
 
+    /**
+     * @apiNote 动态服务绑定
+     */
     @RequestMapping(value="/serviceDynamicBind",method=RequestMethod.POST)
     public String serviceDynamicBind(@RequestBody String req) throws InterruptedException, ExecutionException {
         Map<String,Object> requestMap=jsonTransfer.jsonToMap(req);
         if (!wfEngine.bindVerify(req).getLeft()) return "签名验证失败";
         Map<String,Object> data=jsonTransfer.jsonToMap(String.valueOf(requestMap.get("data")));
+        //验证服务绑定数据
         String serviceInfo=wfEngine.verifyServiceDynamicBindInput(String.valueOf(data.get("serviceName")), 
                                 String.valueOf(data.get("httpMethod")), String.valueOf(data.get("route")), 
                                 data.containsKey("input")?String.valueOf(data.get("input")):"", 
                                 data.containsKey("serviceGroup")?String.valueOf(data.get("serviceGroup")):"", 
                                 data.containsKey("headers")?String.valueOf(data.get("headers")):"", 
                                 data.containsKey("output")?String.valueOf(data.get("output")):"");
+        //如果模拟执行成功，则返回success,等待上链flush,否则返回error
         if(wfEngine.handleDynamicBind(String.valueOf(data.get("oid")), String.valueOf(data.get("taskName")), serviceInfo))
             return String.format("success,the info of bind service is:%s,oid is:%s,taskName is:%s", serviceInfo,String.valueOf(data.get("oid")), String.valueOf(data.get("taskName")));
         else return "serviceDynamicBind error";
     }
 
+    /**
+     * @apiNote 用户动态绑定
+     */
     @RequestMapping(value="/userDynamicBind",method=RequestMethod.POST)
     public String userDynamicBind(@RequestParam String oid,@RequestParam String taskName,@RequestParam String user) {
+        //如果模拟执行成功，则返回success,等待上链flush,否则返回error
         if (wfEngine.handleDynamicBind(oid, taskName, user))
             return String.format("success,the oid:%s ,taskName:%s bind to user:%s",oid,taskName,user);
         else return "userDynamicBind error";
     }
 
+    /**
+     * @apiNote 用户注册
+     */
     @RequestMapping(value="/register", method=RequestMethod.POST)
     public String requestMethodName(@RequestParam String name,
                                     @RequestParam(required = false,defaultValue = "") String oldPrivateKey) throws InvalidKeyException, CryptoException, 
                                     IllegalAccessException, InstantiationException, ClassNotFoundException, 
                                     InvalidArgumentException, NoSuchMethodException, InvocationTargetException, 
                                     NoSuchAlgorithmException, SignatureException, InterruptedException, ExecutionException {
+        //注册
         Pair<Boolean,String> res=wfEngine.handleRegister(name, oldPrivateKey);
         if (res.getKey()) {
+            //注册成功，返回账号，私钥
             Map<String,Object> response=new HashMap<String,Object>(){{
                 put("name",name);
                 put("privateKey",res.getValue());
@@ -405,6 +480,9 @@ public class MonitorController implements DataController {
         } else throw new RuntimeException(String.format("注册失败，因为%s", res.getValue()));
     }
     
+    /**
+     * @apiNote 服务注册
+     */
     @PostMapping(value="/serviceRegister")
     public String serviceRegister(@RequestBody String req) throws InterruptedException, ExecutionException {
         //TODO: process POST request
@@ -412,10 +490,13 @@ public class MonitorController implements DataController {
         String provider=String.valueOf(requestMap.get("provider"));
         String serviceMetaData=String.valueOf(requestMap.get("serviceMetaData"));
         String signature=String.valueOf(requestMap.get("signature"));
+        //注册并返回结果
         return wfEngine.handleServiceRegisty(provider, serviceMetaData, signature);
     }
     
-
+    /**
+     * @apiNote 监控链调用服务
+     */
     @PostMapping(value = "/run")
     public String run(@RequestBody String req, @RequestParam(value = "loadBalance", required = false, defaultValue = "enabled") String loadBalance) throws Exception {
         logger.info("start run");
@@ -424,6 +505,9 @@ public class MonitorController implements DataController {
         //return null;
     }
 
+    /**
+     * @apiNote 监控链调用服务NoCache
+     */
     @PostMapping(value = "/runNoCache")
     public String runNoCache(@RequestBody String req, @RequestParam(value = "loadBalance", required = false, defaultValue = "enabled") String loadBalance) throws Exception {
         logger.info("nocahce start run");
@@ -438,6 +522,9 @@ public class MonitorController implements DataController {
         return "ok";
     }
 
+    /**
+     * @apiNote 获取工作流块高
+     */
     @GetMapping(value="/getBlockHeight")
     public long getBlockHeight() throws ProposalException, InvalidArgumentException {
         return wfEngine.getBlockHeight();

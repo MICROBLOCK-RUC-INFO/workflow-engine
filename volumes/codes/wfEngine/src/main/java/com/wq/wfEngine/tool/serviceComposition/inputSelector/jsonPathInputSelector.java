@@ -11,7 +11,9 @@ import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.wq.wfEngine.tool.jsonTransfer;
 
-
+/**
+ * @apiNote 用开源的jsonPath做的数据对齐
+ */
 @Component
 public class jsonPathInputSelector implements inputSelectorInterface<String,String>{
     
@@ -31,6 +33,7 @@ public class jsonPathInputSelector implements inputSelectorInterface<String,Stri
         return jsonTransfer.toJsonString(resultMap);
     }
 
+    //这个应该是为了适配
     private String process(String sentence) {
         if (!sentence.startsWith("$")) {
             //if (sentence.startsWith("all")) sentence="$.."+sentence;

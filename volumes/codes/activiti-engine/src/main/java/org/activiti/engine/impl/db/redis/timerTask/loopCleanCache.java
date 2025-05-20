@@ -6,6 +6,9 @@ import java.util.TimerTask;
 import org.activiti.engine.impl.db.redis.personalConfig;
 import org.activiti.engine.impl.db.redis.tools.operation.taskBind.tableOperator;
 
+/**
+ * @apiNote 管理tableOperator的缓存
+ */
 public class loopCleanCache {
     public void start() {
         Timer timer=new Timer();

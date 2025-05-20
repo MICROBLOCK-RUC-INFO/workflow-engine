@@ -22,6 +22,11 @@ import springcloud.springcloudgateway.workflow.tools.httpUtil;
 import springcloud.springcloudgateway.workflow.tools.jsonTransfer;
 import springcloud.springcloudgateway.workflow.userRequestResult.resForUsers;
 
+/**
+ * 2025/4/9
+ * flush，这是一个Java提供的函数接口
+ * 对应deploy,instance,complete
+ */
 public class flushConsumer implements Consumer<TransactionEvent>{
 
     private Map<String,workflowResponse> preDatas;
@@ -70,6 +75,7 @@ public class flushConsumer implements Consumer<TransactionEvent>{
             for (String ip:peersIp) {
                 futures.add(httpUtil.doPost("http://"+ip+":8888/wfEngine/flush", jsonString));
             }
+            //下面这一段忘了是干啥的，依稀记得是租约锁最开始用的Redis做的分布式锁时用到的
             //List<Future<SimpleHttpResponse>> releaseFutures=new ArrayList<>();
             // for(Entry<String,StringBuilder> entry:serviceUrlToOids.entrySet()) {
             //     String url=entry.getKey();
@@ -95,16 +101,16 @@ public class flushConsumer implements Consumer<TransactionEvent>{
             int count=0;
             for (Future<SimpleHttpResponse> future:futures) {
                 if (!future.get().getBodyText().equals("ok")) {
+                    //如果flush出错，差一个出错的处理方式，最好加在工作流引擎中
                     count--;
                     //logger.error("flush error oids:"+oids+" error:"+future.get().getBodyText());
                 } else {
                     count++;
-                    //这里差一个出错的处理方式
-                    /*
-                    
-                    */
                 }
             }
+            /*
+             * 判断是否多数节点执行成功，n/3+1
+             */
             if (count<=futures.size()/3) {
                 success=false;
             }
@@ -131,6 +137,9 @@ public class flushConsumer implements Consumer<TransactionEvent>{
                     for (workflowResponse response:preDatas.values()) {
                         response.setFlushEndTime(flushEndTime);
                     }
+                    /**
+                     * 成功将结果放入缓存等用户访问
+                     */
                     resForUsers.addSuccessRes(preDatas);
                 }
             }

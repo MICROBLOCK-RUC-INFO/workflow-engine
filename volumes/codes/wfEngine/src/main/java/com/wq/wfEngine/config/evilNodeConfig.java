@@ -1,5 +1,8 @@
 package com.wq.wfEngine.config;
 
+/**
+ * @apiNote 恶意节点设置
+ */
 public class evilNodeConfig {
     private static boolean isEvil;
     public static void init() {
