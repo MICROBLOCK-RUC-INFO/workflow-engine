@@ -1,20 +1,3 @@
-# Introduction
-
-An Efficient Customized Blockchain System for Inter-Organizational Processes
-
- 
-
-We construct a blockchain system by embedding the customized process engine into the blockchain nodes based on a permissioned blockchain platform Hyperledger Fabric and a process engine Activiti. The customized process engine executes the inter-organizational business processes via a blockchain-style procedure, i.e., checking the validity of transactions, adding the valid transactions into the blockchain through the consensus mechanism, and then updating the process states according to the committed transactions.
-
- 
-
-For more information, please see this paper:
-
- 
-
-Puwei Wang, Zhouxing Sun, Rui Li et al., An Efficient Customized Blockchain System for Inter-Organizational Processes, IEEE International Conference on Web Services, pages 615-625, 2023
-
-
 
 # Prerequisites and setup
 
